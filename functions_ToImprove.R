@@ -553,7 +553,9 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                  ...) {
   
   # create out_dir if does not exist
+  if(is.null(out_dir)){out_dir <- file.path(getwd(), "BeadNorm")}
   if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
   
   # read fcs file
   ff <- flowCore::read.FCS(file, transformation = FALSE,
@@ -594,8 +596,8 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #' will be normalized, default is set to NULL
 #' @param to_plot Logical if to plot bead gate and bead normalization lines for each
 #' file.
-#' @param out_dir Character, pathway to where the plots should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory.
+#' @param out_dir Character, pathway to where the bead normalized fcs files and plots should be saved,
+#' for plots only if argument to_plot = TRUE, default is set to file.path(getwd(), BeadNorm).
 #' @param k the same as in normCytof from CATALYST package, integer width of the
 #' median window used for bead smoothing (affects visualizations only!).
 #' @param remove_beads
@@ -610,7 +612,7 @@ bead_normalize <- function(files,
                            norm_to_ref = NULL,
                            remove_beads = TRUE,
                            to_plot = TRUE,
-                           out_dir = getwd(),
+                           out_dir = NULL,
                            k = 80,
                            ...){
   # Check parameters
