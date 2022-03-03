@@ -35,8 +35,9 @@ ref_sample <- baseline_file(fcs_files = files,
                             out_dir = bead_norm_dir)
 
 # Normalize files
-bead_normalize(files, cores = 1,
-               out_dir = NULL,
+bead_normalize(files[1], cores = 1,
+               out_dir = bead_norm_dir,
+               non_mass_channel = NULL,
                norm_to_ref = ref_sample,
                to_plot = TRUE,
                k = 80,

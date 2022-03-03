@@ -415,7 +415,7 @@ clean_files <- function(files,
 #' @param beads The same as in normCytof from CATALYAST package, character variable:
 #'"dvs" (for bead masses 140, 151, 153 ,165, 175) or
 #'"beta" (for bead masses 139, 141, 159, 169, 175)
-#' @param to_plot Logicle variable that indicates if plots should be genarated,
+#' @param to_plot Logicle variable that indicates if plots should be generated,
 #' default set to FALSE
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to working directory.
@@ -468,6 +468,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 # Función interna para leer, normalizar y guardar
 .bead_normalize_ind <- function(flow_frame,
                            markers_to_keep = NULL,
+                           non_mass_channel = NULL,
                            beads = "dvs",
                            norm_to_ref = NULL,
                            remove_beads = TRUE,
@@ -477,16 +478,27 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                            ...){
 
   if (!is.null(markers_to_keep)){
+    print("in the loop")
 
     matches <- paste(markers_to_keep, collapse="|")
 
     m_to_keep <- grep(matches, FlowSOM::GetMarkers(flow_frame, colnames(flow_frame)),
                              ignore.case = TRUE, value = FALSE)
 
-    non_mass_ch <- grep("Time|length|Ce140|151|153|165|175|Center|Offset|Width|
+    if(is.null(non_mass_channel)){
+      non_mass_ch <- grep("Time|length|Ce140|151|153|165|175|Center|Offset|Width|
                         |Residual|Pd",
-                        colnames(flow_frame),
-                        ignore.case = TRUE, value = FALSE)
+                          colnames(flow_frame),
+                          ignore.case = TRUE, value = FALSE)
+      print("time should be there")
+    } else {
+      matches_ch <- paste(non_mass_channel, collapse="|")
+      non_mass_ch <- grep(matches_ch,
+                          colnames(flow_frame),
+                          ignore.case = TRUE, value = FALSE)
+      print("time should NOT be there")
+    }
+    
 
     channels_to_keep <- c(m_to_keep, non_mass_ch)
     channels_to_keep <- colnames(flow_frame)[sort(unique(channels_to_keep))]
@@ -544,6 +556,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 
 .save_bead_normalize <- function(file,
                                  markers_to_keep,
+                                 non_mass_channel,
                                  beads,
                                  norm_to_ref,
                                  remove_beads,
@@ -553,7 +566,9 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                  ...) {
   
   # create out_dir if does not exist
-  if(is.null(out_dir)){out_dir <- file.path(getwd(), "BeadNorm")}
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "BeadNorm")
+  }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
   
   
@@ -564,6 +579,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
   # bead normalize the files
   ff_norm <- .bead_normalize_ind(flow_frame = ff,
                                  out_dir = out_dir,
+                                 non_mass_channel = non_mass_channel,
                                  norm_to_ref = norm_to_ref,
                                  to_plot = to_plot,
                                  k = k,
@@ -582,13 +598,17 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #'
 #' @param files Character vector with the paths of the raw files
 #' @param cores Number of cores to be used
-#' @param flow_frame Untranfosrmed flow frame.
+#' @param flow_frame Untransformed flow frame.
 #' @param markers_to_keep Character vector, marker names to be kept after
 #' the normalization, can be full marker name e.g. "CD45" or "CD". Additionally,
 #' non_mass channels like Time, Event_lenght, Gaussian parameter and palladium
-#' barcoding channels are kept
+#' barcoding channels are kept if non_mass_ch set to NULL.
 #' If NULL (default) all markers will be normalized and kept in flowframe,
 #' selection of the markers will reduce file volume and speedup the analysis.
+#' @param non_mass_ch Character vector, channel names to be kept after the 
+#' normalization, can be "151", "Time", "length". If NULL (default) the following 
+#' channels are kept: "Time", "length", "Ce140", "Eu151", "Eu153","Ho165", 
+#' "Lu175", "Center","Offset", "Width", "Residual","Pd" 
 #' @param beads character, as in normCytof, "dvs" (for bead masses 140, 151, 153 ,165, 175)
 #' or "beta" (for bead masses 139, 141, 159, 169, 175) or a numeric vector of masses.
 #' Default is set to "dvs"
@@ -608,6 +628,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 bead_normalize <- function(files,
                            cores = 1,
                            markers_to_keep = NULL,
+                           non_mass_channel = NULL,
                            beads = "dvs",
                            norm_to_ref = NULL,
                            remove_beads = TRUE,
@@ -630,6 +651,7 @@ bead_normalize <- function(files,
       .save_bead_normalize(x,
                            markers_to_keep,
                            beads,
+                           non_mass_channel,
                            norm_to_ref,
                            remove_beads,
                            to_plot,
@@ -642,6 +664,7 @@ bead_normalize <- function(files,
     BiocParallel::bplapply(files, function(x) {
       .save_bead_normalize(x,
                            markers_to_keep,
+                           non_mass_channel,
                            beads,
                            norm_to_ref,
                            remove_beads,
