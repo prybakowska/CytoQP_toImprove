@@ -1,14 +1,3 @@
-
-.checkClass <- function(x) {
-  if(is(x, 'logical')) {
-    return(TRUE)
-  }
-  else {
-    return(FALSE)
-  }
-}
-
-
 #' @description Finds all the mass channels
 #'
 #' @param flow_frame Untransformed flow frame
@@ -894,16 +883,17 @@ fsom_aof <- function(fcs_files,
                      seed = 1){
 
 
-  if(!.checkClass(phenotyping_channels)){
+  if(!exists("phenotyping_channels")){
     o <- capture.output(ff_tmp <- flowCore::read.FCS(file.path(files[1])))
     markers <- FlowSOM::GetMarkers(ff_tmp, colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
   }
 
-  if(arcsine_transform  == TRUE){
+  if(arcsine_transform){
     trans <- transformList(names(phenotyping_channels), CytoNorm::cytofTransform)
-  } else {
+  }
+  else {
     trans <- NULL
   }
 
@@ -924,13 +914,15 @@ fsom_aof <- function(fcs_files,
 
   if(max(as.numeric(fsom$metaclustering)) > length(myCol)){
     backgroundColors <- NULL
-  } else {
+  }
+  else {
     backgroundColors <- myCol
   }
 
   if(!is.null(batch)){
     filename <- paste0(batch, "_FlowSOM_clustering.pdf")
-  } else {
+  }
+  else {
     filename <- "FlowSOM_clustering.pdf"
   }
 
@@ -1007,7 +999,8 @@ scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
 
   if(is.null(batch)){
     saveRDS(list_scores, file.path(out_dir, "AOF_scores_and_Scaled_AOF_scores.RDS"))
-  } else {
+  }
+  else {
     saveRDS(list_scores, file.path(out_dir, paste0(batch, "_AOF_scores_and_Scaled_AOF_scores.RDS")))
   }
 
@@ -1036,9 +1029,9 @@ aof_scoring <- function(fcs_files,
                         out_dir,
                         batch = NULL){
 
-  if(!.checkClass(phenotyping_channels)){
+  if(!exists("phenotyping_channels")){
 
-    o <- capture.output(ff_tmp <- read.FCS(file.path(files[1])))
+    ff_tmp <- read.FCS(file.path(files[1]))
     markers <- FlowSOM::GetMarkers(ff_tmp, colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
@@ -1049,13 +1042,7 @@ aof_scoring <- function(fcs_files,
     }
   }
 
-  aof_scores <- matrix(NA,
-                       nrow = length(fcs_files),
-                       ncol = length(phenotyping_channels),
-                       dimnames = list(fcs_files,
-                                       names(phenotyping_channels)))
-
-  for(file in fcs_files){
+  aof_scores <- lapply(fcs_files, function(file) {
     print(paste("calculating AOF", file))
     File_ID <- which(fcs_files == file)
     idx <- which(fsom$data[,"File"] == File_ID)
@@ -1068,8 +1055,12 @@ aof_scoring <- function(fcs_files,
                                             width = 0.05,
                                             cofactor = 5,
                                             verbose = TRUE)
-    aof_scores[file, ] <- aof_tmp$Aof
-  }
+    return(aof_tmp$Aof)
+  })
+
+  aof_scores <- do.call("rbind", aof_scores)
+  rownames(aof_scores) <- fcs_files
+  colnames(aof_scores) <- names(phenotyping_channels)
 
   scaled_aof_score(aof_scores = aof_scores,
                    out_dir = out_dir,
@@ -1101,7 +1092,8 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
 
   if(inherits(scores, "list")){
     df_scores <- do.call(rbind, scores)
-  } else {
+  }
+  else {
     df_scores <- scores
   }
 
@@ -1183,8 +1175,7 @@ file_quality_check <- function(fcs_files,
   if(!dir.exists(out_dir)) dir.create(out_dir)
 
   if (!is.null(file_batch_id)) {
-    scores <- list()
-    for (batch in unique(file_batch_id)){
+    scores <- lapply(unique(file_batch_id), function(batch) {
       print(batch)
 
       files <- fcs_files[file_batch_id == batch]
@@ -1194,13 +1185,13 @@ file_quality_check <- function(fcs_files,
                        arcsine_transform = arcsine_transform,
                        nClus = nClus,
                        batch = batch, ...)
-
-      scores[[batch]] <- aof_scoring(fcs_files = files,
-                                     phenotyping_markers = phenotyping_markers,
-                                     fsom = fsom, out_dir = out_dir, batch = batch)
-    }
-
-  } else {
+      return(aof_scoring(fcs_files = files,
+                         phenotyping_markers = phenotyping_markers,
+                         fsom = fsom, out_dir = out_dir, batch = batch))
+    })
+    names(scores) <- unique(file_batch_id)
+  }
+  else {
     files <- fcs_files
     fsom <- fsom_aof(fcs_files = files, phenotyping_markers = phenotyping_markers,
                      out_dir = out_dir, arcsine_transform = arcsine_transform,
