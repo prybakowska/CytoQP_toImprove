@@ -422,7 +422,7 @@ clean_files <- function(files,
 #' @description Creates the reference flowframe for which bead´s mean values will
 #' be computed and use during the normalization.
 #'
-#' @param fcs_files Path to fcs files to be normalized
+#' @param fcs_files Character, path to fcs files to be normalized
 #' @param beads The same as in normCytof from CATALYAST package, character variable:
 #'"dvs" (for bead masses 140, 151, 153 ,165, 175) or
 #'"beta" (for bead masses 139, 141, 159, 169, 175)
@@ -562,6 +562,10 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                  out_dir,
                                  k,
                                  ...) {
+  
+  # create out_dir if does not exist
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
   # read fcs file
   ff <- flowCore::read.FCS(file, transformation = FALSE,
                            truncate_max_range = FALSE)
@@ -585,7 +589,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #' @description Performs bead normalization using function from CATALYST package.
 #' normalized fcs files and plots are stored in out_dir directory
 #'
-#' @param files Character vector or list with the paths of the raw files
+#' @param files Character vector with the paths of the raw files
 #' @param cores Number of cores to be used
 #' @param flow_frame Untranfosrmed flow frame.
 #' @param markers_to_keep Character vector, marker names to be kept after
@@ -621,7 +625,7 @@ bead_normalize <- function(files,
                            k = 80,
                            ...){
   # Check parameters
-  if(!is(files, "character") & !is(files, "list")) {
+  if(!is(files, "character")) {
     stop("files must be a character vector or a list")
   }
 
