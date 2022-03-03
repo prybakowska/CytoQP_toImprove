@@ -90,7 +90,7 @@ if(!require("pheatmap")){
 }
 
 if(!require(cytofclean)){
-  devtools::install_github("JimboMahoney/cytofclean", 
+  devtools::install_github("JimboMahoney/cytofclean",
                            dependencies = TRUE)
   library("cytofclean")
 }
@@ -129,6 +129,10 @@ if (!require("pals")) {
 if (!require("scales")) {
   install.packages("scales")
   library(scales)
+}
+
+if (!require("BiocParallel")) {
+  BiocManager::install("BiocParallel")
 }
 
 

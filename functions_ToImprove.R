@@ -36,7 +36,7 @@ find_mass_ch <- function(flow_frame,
 #'
 #' @return timeFlowData, the cell assignment to the bins
 
-flow_rate_bin_addapted <- function (x, second_fraction = 0.1, timeCh = timeCh, timestep = timestep)
+.flow_rate_bin_addapted <- function (x, second_fraction = 0.1, timeCh = timeCh, timestep = timestep)
 {
   xx <- exprs(x)[, timeCh]
   idx <- c(1:nrow(x))
@@ -71,41 +71,36 @@ flow_rate_bin_addapted <- function (x, second_fraction = 0.1, timeCh = timeCh, t
 }
 
 
-#' clean_flow_rate
-#'
-#' @description Cleans the flow rate using functions from flowAI package.
-#'
-#' @param flow_frame Untransformed flow frame
-#' @param to_plot Logical if to plot cleaning results, default is set to TRUE.
-#' @param out_dir Character, pathway to where the plots should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory.
-#' @param alpha numeric, as in flow_auto_qc {flowAI}. The statistical
-#' significance level used to accept anomalies. The default value is 0.01.
-#' @param data_type Character, if MC (mass cytometry) of FC (flow cytometry) data
-#' are analyzed
-#'
-#' @return Clean, untransformed flow frame and save the plot _beadNorm_flowAI.png
-#'  in out_dir
-clean_flow_rate <- function(flow_frame, to_plot = TRUE,
+
+.clean_flow_rate_ind <- function(flow_frame, to_plot = TRUE,
                             out_dir = getwd(), alpha = 0.01, data_type = "MC") {
 
   if (data_type == "MC"){
     time_division <- 100
     timestep <- 0.01
-  } else if (data_type == "FC") {
+  }
+  else if (data_type == "FC") {
     time_division <- 1
     word <- which(grepl("TIMESTEP", names(keyword(flowSet(ff)[[1]])),
                         ignore.case = TRUE))
     timestep <- as.numeric(keyword(flowSet(ff)[[1]])[[word[1]]])
-  } else{
-    stop("type of data MC or FC needs to be specify")
+  }
+  else{
+    stop("type of data MC or FC needs to be specified")
   }
 
+  if (to_plot == "None") {
+    to_plot <- FALSE
+  }
+  else {
+    to_plot <- TRUE
+
+  }
 
   flow_frame@exprs[, "Time"] <- flow_frame@exprs[, "Time"]/time_division
 
 
-  FlowRateData <- flow_rate_bin_addapted(flow_frame,
+  FlowRateData <- .flow_rate_bin_addapted(flow_frame,
                                          timeCh = "Time",
                                          timestep = timestep)
 
@@ -113,6 +108,10 @@ clean_flow_rate <- function(flow_frame, to_plot = TRUE,
                                          FlowRateData = FlowRateData,
                                          alpha = alpha,
                                          use_decomp = TRUE)
+
+  if(!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
 
   if (to_plot == TRUE){
 
@@ -123,7 +122,8 @@ clean_flow_rate <- function(flow_frame, to_plot = TRUE,
 
     png(file.path(out_dir,
                   gsub(".fcs", "_flowAI.png",
-                       basename(flow_frame@description$FILENAME), ignore.case = TRUE)),
+                       basename(flow_frame@description$FILENAME),
+                       ignore.case = TRUE)),
         width = 800,
         height = 600)
     if(data_type == "MC"){
@@ -178,41 +178,8 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 }
 
 
-#' clean_signal
-#'
-#' @description Cleans the signal using flowCut package
-#'
-#' @param flow_frame Flow frame, if unstransformed arcsine_transform should be
-#' kept as default, TRUE.
-#' @param channels_to_clean Character vector of the channels that needs to be cleaned
-#' @param to_plot Characer variable that indicates if plots should be genarated.
-#' The default is "All", which generates plot for all channels. Other options are
-#' "Flagged Only", plots the channels that were spotted with flowcut as incorrect
-#' and "None", does not plots anything.
-#' @param Segment As in flowCut, an integer value that specifies the
-#' number of events in each segment to be analyzed.
-#' Each segment is defaulted to 1000 events.
-#' @param out_dir Character, pathway to where the plots should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory.
-#' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5, default is set to TRUE
-#' @param non_used_bead_ch Character vector, bead channels that does not contain
-#' any marker information, thus do not need to be cleaned and used for further analysis
-#' @param ... Additional arguments to pass to flowcut.
-#' @param MaxPercCut As in flowCut, numeric between 0-1 the maximum percentage of
-#' event tha will be removed form the data.
-#' @param UseOnlyWorstChannels as in flowCut, logical, automated detection of the
-#' worst channel that will be used for cleaninig
-#' @param AllowFlaggedRerun as in flowCut, logical, specify if flowCut will run
-# second time in case the file was flagged
-#' @param AlwaysClean as in flowCut, logicle. The file will be cleaned even if it has a
-#' relatively stable signal. The segments that are 7 SD away from the mean of all
-#' segments are removed
-#'
-#' @return Cleaned, untransformed flow frame if arcsine_transform argument
-#' set to TRUE, otherwise transformed flow frame is returned. Save plots with prefix
-#' "flowCutCleaned.png" to out_dir if parameter to_plot set to "All" or "Flagged Only".
-clean_signal <- function(flow_frame,
+
+.clean_signal_ind <- function(flow_frame,
                          channels_to_clean = NULL,
                          to_plot = "All",
                          Segment = 1000,
@@ -234,16 +201,19 @@ clean_signal <- function(flow_frame,
       ff_t <- flowCore::transform(flow_frame,
                                   transformList(colnames(flow_frame)[channels_to_transform],
                                                 CytoNorm::cytofTransform))
-    } else if (data_type == "FC"){
+    }
+    else if (data_type == "FC"){
       ff_t <- flowCore::transform(flow_frame,
                                   transformList(colnames(flow_frame)[channels_to_transform],
                                                 arcsinhTransform(a = 0, b = 1/150, c = 0)))
 
-    } else {
+    }
+    else {
       stop("specify data type MC or FC")
     }
 
-  } else {
+  }
+  else {
     ff_t <- flow_frame
   }
 
@@ -252,16 +222,17 @@ clean_signal <- function(flow_frame,
     ch_to_clean <- which(colnames(flow_frame) %in% channels_to_clean)
 
     if(!("TIME" %in% toupper(colnames(flow_frame)[ch_to_clean]))){
-
       ind_Time <- grep("TIME", toupper(colnames(flow_frame)))
       channels <- unique(sort(c(ch_to_clean, ind_Time)))
     }
 
-  } else {
+  }
+  else {
 
     if (!is.null(non_used_bead_ch)) {
       non_bead_ch <- "140"
-    } else {
+    }
+    else {
       non_bead_ch <- paste(non_used_bead_ch, collapse="|")
     }
 
@@ -291,15 +262,159 @@ clean_signal <- function(flow_frame,
 
   ff_t_clean <- cleaned_data$frame
 
-  if (arcsine_transform == TRUE){
+  if (arcsine_transform){
     ff_clean <- flowCore::transform(ff_t_clean,
                                     transformList(colnames(flow_frame)[channels_to_transform],
                                                   cytofTransform.reverse))
-  } else {
+  }
+  else {
     ff_clean <- ff_t_clean
   }
 
   return(ff_clean)
+}
+
+.save_bead_clean <- function(file,
+                             to_plot = "All",
+                             out_dir = getwd(),
+                             alpha = 0.01,
+                             data_type = "MC",
+                             channels_to_clean = NULL,
+                             Segment = 1000,
+                             arcsine_transform = TRUE,
+                             non_used_bead_ch = NULL,
+                             MaxPercCut = 0.5,
+                             UseOnlyWorstChannels = TRUE,
+                             AllowFlaggedRerun = TRUE,
+                             AlwaysClean = TRUE,
+                             ...){
+  # read fcs file
+  ff <- flowCore::read.FCS(filename = file,
+                           transformation = FALSE)
+
+  # clean flow rate
+  ff <- .clean_flow_rate_ind(flow_frame = ff,
+                            out_dir = out_dir,
+                            to_plot = to_plot,
+                            data_type = data_type)
+
+  # clean signal
+  ff <- .clean_signal_ind(flow_frame = ff,
+                         to_plot = to_plot,
+                         out_dir = out_dir,
+                         Segment = Segment,
+                         arcsine_transform = arcsine_transform,
+                         data_type = data_type,
+                         non_used_bead_ch = non_used_bead_ch)
+
+  # Write FCS files
+  flowCore::write.FCS(ff,
+                      file = file.path(out_dir, gsub("_beadNorm","_cleaned",
+                                                       basename(file))))
+}
+
+#' clean_files
+#'
+#' @description Cleans the flow rate using functions from flowAI package and
+#' the signal using flowCut package.
+#'
+#' @param files Character vector or list with the paths of the raw files
+#' @param cores Number of cores to be used#' @param
+#' @param to_plot Characer variable that indicates if plots should be genarated.
+#' The default is "All", which generates plot for all channels. Other options are
+#' "Flagged Only", plots the channels that were spotted with flowcut as incorrect
+#' and "None", does not plots anything.
+#' #' @param out_dir Character, pathway to where the plots should be saved,
+#' only if argument to_plot = TRUE, default is set to working directory.
+#' @param alpha numeric, as in flow_auto_qc {flowAI}. The statistical
+#' significance level used to accept anomalies. The default value is 0.01.
+#' @param data_type Character, if MC (mass cytometry) of FC (flow cytometry) data
+#' are analyzed
+#' @param channels_to_clean Character vector of the channels that needs to be cleaned
+#' @param Segment As in flowCut, an integer value that specifies the
+#' number of events in each segment to be analyzed.
+#' Each segment is defaulted to 1000 events.
+#' @param arcsine_transform Logical, if the data should be transformed with
+#' arcsine transformation and cofactor 5, default is set to TRUE
+#' @param non_used_bead_ch Character vector, bead channels that does not contain
+#' any marker information, thus do not need to be cleaned and used for further analysis
+#' @param ... Additional arguments to pass to flowcut.
+#' @param MaxPercCut As in flowCut, numeric between 0-1 the maximum percentage of
+#' event tha will be removed form the data.
+#' @param UseOnlyWorstChannels as in flowCut, logical, automated detection of the
+#' worst channel that will be used for cleaninig
+#' @param AllowFlaggedRerun as in flowCut, logical, specify if flowCut will run
+# second time in case the file was flagged
+#' @param AlwaysClean as in flowCut, logicle. The file will be cleaned even if it has a
+#' relatively stable signal. The segments that are 7 SD away from the mean of all
+#' segments are removed
+#'
+#' @return Cleaned, untransformed flow frame if arcsine_transform argument
+#' set to TRUE, otherwise transformed flow frame is returned. Save plots with prefix
+#' "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir if parameter to_plot
+#' set to "All" or "Flagged Only".
+
+clean_files <- function(files,
+                        cores = 1,
+                        to_plot = "All",
+                        out_dir = getwd(),
+                        alpha = 0.01,
+                        data_type = "MC",
+                        channels_to_clean = NULL,
+                        Segment = 1000,
+                        arcsine_transform = TRUE,
+                        non_used_bead_ch = NULL,
+                        MaxPercCut = 0.5,
+                        UseOnlyWorstChannels = TRUE,
+                        AllowFlaggedRerun = TRUE,
+                        AlwaysClean = TRUE,
+                        ...) {
+  # Check parameters
+  if(!is(files, "character") & !is(files, "list")) {
+    stop("files must be a character vector or a list")
+  }
+
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+  # Analysis with a single core
+  if (cores == 1) {
+    lapply(files, function(x) {
+      .save_bead_clean(x,
+                       to_plot = to_plot,
+                       out_dir = out_dir,
+                       alpha = alpha,
+                       data_type = data_type,
+                       channels_to_clean = channels_to_clean,
+                       Segment = Segment,
+                       arcsine_transform = arcsine_transform,
+                       non_used_bead_ch = non_used_bead_ch,
+                       MaxPercCut = MaxPercCut,
+                       UseOnlyWorstChannels = UseOnlyWorstChannels,
+                       AllowFlaggedRerun = AllowFlaggedRerun,
+                       AlwaysClean = AlwaysClean)})
+  }
+
+  # Parallelized analysis
+  else {
+    BiocParallel::bplapply(files, function(x) {
+      .save_bead_clean(x,
+                       to_plot = to_plot,
+                       out_dir = out_dir,
+                       alpha = alpha,
+                       data_type = data_type,
+                       channels_to_clean = channels_to_clean,
+                       Segment = Segment,
+                       arcsine_transform = arcsine_transform,
+                       non_used_bead_ch = non_used_bead_ch,
+                       MaxPercCut = MaxPercCut,
+                       UseOnlyWorstChannels = UseOnlyWorstChannels,
+                       AllowFlaggedRerun = AllowFlaggedRerun,
+                       AlwaysClean = AlwaysClean)},
+      BPPARAM = MulticoreParam(workers = cores))
+  }
+
 }
 
 #' baseline_file
@@ -323,7 +438,6 @@ clean_signal <- function(flow_frame,
 #' default is set to 25000, so around 250 beads can be aggregated per each file
 #'
 #' @return returns reference, aggregated flow frame
-
 baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                        out_dir = getw(), k = 80, ncells = 25000, ...){
 
@@ -420,11 +534,15 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
     if(!dir.exists(plot_dir))(dir.create(plot_dir))
 
     p <- dat_norm$scatter
-    ggplot2::ggsave(filename = file.path(plot_dir, gsub(".FCS|.fcs","_beadGate.png", filename)),
+    ggplot2::ggsave(filename = file.path(plot_dir,
+                                         gsub(".FCS|.fcs","_beadGate.png",
+                                              filename)),
            plot = p, limitsize = FALSE)
 
     p <- dat_norm$lines
-    ggplot2::ggsave(filename = file.path(plot_dir, gsub(".FCS|.fcs","_beadLines.png", filename)),
+    ggplot2::ggsave(filename = file.path(plot_dir,
+                                         gsub(".FCS|.fcs","_beadLines.png",
+                                              filename)),
            plot = p, limitsize = FALSE)
 
   }
@@ -458,7 +576,8 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 
   # save normalized FCS files
   flowCore::write.FCS(ff_norm, filename = file.path(bead_norm_dir,
-                                                    gsub(".FCS","_beadNorm.fcs", basename(file),
+                                                    gsub(".FCS","_beadNorm.fcs",
+                                                         basename(file),
                                                          ignore.case = TRUE)))
 }
 #' bead_normalize
@@ -607,31 +726,29 @@ plot_marker_quantiles <- function(files_before_norm,
   fcs_files <- c(files_after_norm, files_before_norm)
   tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
 
-  if (!file.exists(fcs_files[1])){
+  if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
 
-  if(!.checkClass(norm_markers)){
+  ff_tmp <- read.FCS(file.path(fcs_files[1]))
 
-    o <- capture.output(ff_tmp <- read.FCS(file.path(fcs_files[1])))
+  if (!is.null(markers_to_plot)){
 
-    if (!is.null(markers_to_plot)){
-
-      if(!is.character(markers_to_plot)){
-        stop ("markers are not a character vector")
-      }
-
-      matches <- paste(markers_to_plot, collapse="|")
-
-      norm_markers <- grep(matches,
-                           FlowSOM::GetMarkers(ff_tmp, find_mass_ch(ff_tmp,
-                                                            value = TRUE)),
-                           value = TRUE, ignore.case = F)
-    } else {
-      norm_markers <- find_mass_ch(ff_tmp, value = TRUE)
-      norm_markers <- FlowSOM::GetMarkers(ff_tmp, norm_markers)
+    if(!is.character(markers_to_plot)){
+      stop ("markers are not a character vector")
     }
+
+    matches <- paste(markers_to_plot, collapse="|")
+
+    norm_markers <- grep(matches,
+                         FlowSOM::GetMarkers(ff_tmp, find_mass_ch(ff_tmp,
+                                                          value = TRUE)),
+                         value = TRUE, ignore.case = FALSE)
+  } else {
+    norm_markers <- find_mass_ch(ff_tmp, value = TRUE)
+    norm_markers <- FlowSOM::GetMarkers(ff_tmp, norm_markers)
   }
+
 
   quantile_values <-  c(0.01, 0.25, 0.5, 0.75, 0.99)
   quantiles <- expand.grid(File = tmp,
@@ -644,14 +761,18 @@ plot_marker_quantiles <- function(files_before_norm,
   quantiles$Normalization <- gsub(".*.fcs_|.*.FCS_", "", quantiles$File)
   quantiles$File <- gsub("_YES|_NO", "", quantiles$File)
 
+  ## TO DO Reestructure the following code to avoid loops
+
   for (file in fcs_files) {
     print(file)
 
-    o <- capture.output(ff <- read.FCS(file.path(file)))
+    ff <- read.FCS(file.path(file))
 
     if(arcsine_transform == TRUE){
-      ff <- flowCore::transform(ff, transformList(grep("Di", colnames(ff), value = TRUE),
-                                        arcsinhTransform(a = 0, b = 1/5, c = 0)))
+      ff <- flowCore::transform(ff, transformList(grep("Di", colnames(ff),
+                                                       value = TRUE),
+                                        arcsinhTransform(a = 0, b = 1/5,
+                                                         c = 0)))
     }
 
     norm <- quantiles$Normalization[(which(quantiles$File == file)[1])]
@@ -676,16 +797,22 @@ plot_marker_quantiles <- function(files_before_norm,
   }
 
   if(is.null(uncommon_prefix)){
-    quantiles$Sample <- gsub(pattern = "Norm_", replacement = "", ignore.case = TRUE,
-                             x = gsub(pattern = "_CC_gated.fcs|_gated.fcs|_beadNorm.fcs|.FCS|.fcs",
-                                  replacement = "", ignore.case = TRUE,
-                                  x = basename(as.character(quantiles$File))))
-  } else {
+    quantiles$Sample <- gsub(pattern = "Norm_", replacement = "",
+                             ignore.case = TRUE,
+                             x = gsub(
+                               pattern = "_CC_gated.fcs|_gated.fcs|_beadNorm.fcs|.FCS|.fcs",
+                               replacement = "", ignore.case = TRUE,
+                               x = basename(as.character(quantiles$File))))
+  }
+  else {
     uncommon_prefix <- paste(uncommon_prefix, collapse = ("|"))
-    quantiles$Sample <- gsub(pattern = "Norm_", replacement = "", ignore.case = TRUE,
-                             x = gsub(pattern = uncommon_prefix, replacement = "",
+    quantiles$Sample <- gsub(pattern = "Norm_", replacement = "",
+                             ignore.case = TRUE,
+                             x = gsub(pattern = uncommon_prefix,
+                                      replacement = "",
                                       ignore.case = TRUE,
-                                      x =  basename(as.character(quantiles$File))))
+                                      x =  basename(as.character(
+                                        quantiles$File))))
   }
 
   ncols <- length(unique(quantiles$Batch))
@@ -713,7 +840,8 @@ plot_marker_quantiles <- function(files_before_norm,
     facet_wrap(~ Marker + Batch, ncol = ncols, scales = "free_x") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1),
-          panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
           legend.position = "bottom")
 
   if (!is.null(manual_colors)){
@@ -723,7 +851,8 @@ plot_marker_quantiles <- function(files_before_norm,
   ggplot2::ggsave(filename = "Marker_distribution_across_aliquots_and_batches.pdf",
                  plot = p,
                  path = file.path(out_dir),
-                 width = length(fcs_files)*0.25, height = length(norm_markers)*4, limitsize = F)
+                 width = length(fcs_files)*0.25,
+                 height = length(norm_markers)*4, limitsize = F)
 }
 
 #' fsom_aof

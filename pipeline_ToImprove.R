@@ -86,12 +86,8 @@ plot_marker_quantiles(files_after_norm = files_a,
 # Signal Cleaning --------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-# set input directory (pathway to the files that are going to be cleaned)
-bead_norm_dir <- file.path(dir, "BeadNorm")
-
 # set and create the directory where cleaned fcs files will be saved
 clean_dir <- file.path(dir, "Cleaned")
-if(!dir.exists(clean_dir)) dir.create(clean_dir)
 
 # Define which files will be cleaned
 files <- list.files(bead_norm_dir,
@@ -99,32 +95,14 @@ files <- list.files(bead_norm_dir,
                     pattern = "_beadNorm.fcs$",
                     full.names = TRUE)
 
-# Clean file by file in the loop, saving new file with each loop
-for (file in files) {
-
-  # read fcs file
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
-  # clean flow rate
-  ff <- clean_flow_rate(flow_frame = ff,
-                        out_dir = clean_dir,
-                        to_plot = TRUE,
-                        data_type = "MC")
-
-  # clean signal
-  ff <- clean_signal(flow_frame = ff,
-                     to_plot = "All",
-                     out_dir = clean_dir,
-                     Segment = 1000,
-                     arcsine_transform = TRUE,
-                     data_type = "MC",
-                     non_used_bead_ch = "140")
-
-  # Write FCS files
-  flowCore::write.FCS(ff,
-            file = file.path(clean_dir, gsub("_beadNorm","_cleaned", basename(file))))
-}
+# Clean files
+clean_files(files, cores = 2,
+            out_dir = clean_dir,
+            to_plot = "All",
+            data_type = "MC",
+            Segment = 1000,
+            arcsine_transform = TRUE,
+            non_used_bead_ch = "140")
 
 # ------------------------------------------------------------------------------
 # Files outliers detection -----------------------------------------------------
