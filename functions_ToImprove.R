@@ -503,19 +503,19 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
    
     matches <- paste(markers_to_keep, collapse="|")
 
-    m_to_keep <- grep(matches, FlowSOM::GetMarkers(flow_frame, colnames(flow_frame)),
+    m_to_keep <- grep(matches, FlowSOM::GetMarkers(flow_frame, flowCore::colnames(flow_frame)),
                              ignore.case = TRUE, value = FALSE)
 
     if(is.null(non_mass_channel)){
       non_mass_ch <- grep("Time|length|Ce140|151|153|165|175|Center|Offset|Width|
                         |Residual|Pd",
-                          colnames(flow_frame),
+                          flowCore::colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
       
     } else {
       matches_ch <- paste(c(non_mass_channel, "Time", "length"), collapse="|")
       non_mass_ch <- grep(matches_ch,
-                          colnames(flow_frame),
+                          flowCore::colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
      
     }
@@ -620,7 +620,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #' normalized fcs files and plots are stored in out_dir directory
 #'
 #' @param files Character vector with the paths to the raw files.
-#' @param cores Number of cores to be used.
+#' @param cores Number of cores to be used. Works only for not-Widows users.
 #' @param markers_to_keep Character vector, marker names to be kept after
 #' the normalization, can be full marker name e.g. "CD45" or "CD". 
 #' If NULL (default) all markers will be normalized and kept in flowframe. 
