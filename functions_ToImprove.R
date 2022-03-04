@@ -286,7 +286,6 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
   if(clean_flow_rate){
     # clean flow rate
     message("cleaning flowrate for ", basename(file))
-    print(clean_flow_rate)
     ff <- .clean_flow_rate_ind(flow_frame = ff,
                                out_dir = out_dir,
                                to_plot = to_plot,
@@ -1537,44 +1536,44 @@ debarcode_files <- function(fcs_files,
   return(ff_clean)
 }
 
-.save_bead_clean <- function(file,
-                             to_plot = "All",
-                             out_dir = getwd(),
-                             alpha = 0.01,
-                             data_type = "MC",
-                             channels_to_clean = NULL,
-                             Segment = 1000,
-                             arcsine_transform = TRUE,
-                             non_used_bead_ch = NULL,
-                             MaxPercCut = 0.5,
-                             UseOnlyWorstChannels = TRUE,
-                             AllowFlaggedRerun = TRUE,
-                             AlwaysClean = TRUE,
-                             ...){
-  # read fcs file
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
-  # clean flow rate
-  ff <- .clean_flow_rate_ind(flow_frame = ff,
-                             out_dir = out_dir,
-                             to_plot = to_plot,
-                             data_type = data_type)
-
-  # clean signal
-  ff <- .clean_signal_ind(flow_frame = ff,
-                          to_plot = to_plot,
-                          out_dir = out_dir,
-                          Segment = Segment,
-                          arcsine_transform = arcsine_transform,
-                          data_type = data_type,
-                          non_used_bead_ch = non_used_bead_ch)
-
-  # Write FCS files
-  flowCore::write.FCS(ff,
-                      file = file.path(out_dir, gsub("_beadNorm","_cleaned",
-                                                     basename(file))))
-}
+# .save_bead_clean <- function(file,
+#                              to_plot = "All",
+#                              out_dir = getwd(),
+#                              alpha = 0.01,
+#                              data_type = "MC",
+#                              channels_to_clean = NULL,
+#                              Segment = 1000,
+#                              arcsine_transform = TRUE,
+#                              non_used_bead_ch = NULL,
+#                              MaxPercCut = 0.5,
+#                              UseOnlyWorstChannels = TRUE,
+#                              AllowFlaggedRerun = TRUE,
+#                              AlwaysClean = TRUE,
+#                              ...){
+#   # read fcs file
+#   ff <- flowCore::read.FCS(filename = file,
+#                            transformation = FALSE)
+# 
+#   # clean flow rate
+#   ff <- .clean_flow_rate_ind(flow_frame = ff,
+#                              out_dir = out_dir,
+#                              to_plot = to_plot,
+#                              data_type = data_type)
+# 
+#   # clean signal
+#   ff <- .clean_signal_ind(flow_frame = ff,
+#                           to_plot = to_plot,
+#                           out_dir = out_dir,
+#                           Segment = Segment,
+#                           arcsine_transform = arcsine_transform,
+#                           data_type = data_type,
+#                           non_used_bead_ch = non_used_bead_ch)
+# 
+#   # Write FCS files
+#   flowCore::write.FCS(ff,
+#                       file = file.path(out_dir, gsub("_beadNorm","_cleaned",
+#                                                      basename(file))))
+# }
 
 
 
