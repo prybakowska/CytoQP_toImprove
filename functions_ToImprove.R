@@ -308,7 +308,7 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 #' the signal using flowCut package.
 #'
 #' @param files Character vector or list with the paths of the raw files
-#' @param cores Number of cores to be used#' @param
+#' @param cores Number of cores to be used
 #' @param to_plot Characer variable that indicates if plots should be genarated.
 #' The default is "All", which generates plot for all channels. Other options are
 #' "Flagged Only", plots the channels that were spotted with flowcut as incorrect
@@ -401,7 +401,7 @@ clean_files <- function(files,
                        UseOnlyWorstChannels = UseOnlyWorstChannels,
                        AllowFlaggedRerun = AllowFlaggedRerun,
                        AlwaysClean = AlwaysClean)},
-      BPPARAM = MulticoreParam(workers = cores))
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
   }
 
 }
@@ -551,10 +551,10 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                  out_dir,
                                  k,
                                  ...) {
-  
+
   # create out_dir if does not exist
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   # read fcs file
   ff <- flowCore::read.FCS(file, transformation = FALSE,
                            truncate_max_range = FALSE)
@@ -646,7 +646,7 @@ bead_normalize <- function(files,
                            to_plot,
                            out_dir,
                            k)},
-      BPPARAM = MulticoreParam(workers = cores))
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
   }
 
 }
@@ -1298,7 +1298,7 @@ debarcode_files <- function(fcs_files,
     id <- is.na(metadata(dat)$sep_cutoffs)
     metadata(dat)$sep_cutoffs[id] <- 1
 
-    if (to_plot == TRUE){
+    if (to_plot){
       p <- CATALYST::plotYields(dat, which = rownames(s_key))
 
       pdf(file.path(out_dir, paste(gsub(".fcs", "_yields.pdf", basename(file)))))
@@ -1310,7 +1310,7 @@ debarcode_files <- function(fcs_files,
 
     dat <- CATALYST::applyCutoffs(dat)
 
-    if (to_plot == TRUE){
+    if (to_plot){
       p <- CATALYST::plotEvents(dat, n = 500)
 
       pdf(file.path(out_dir, paste(gsub(".fcs", "_debarcode_quality.pdf",
@@ -1334,37 +1334,161 @@ debarcode_files <- function(fcs_files,
                                     "_debarcoded.fcs"))
   }
 
-  if(less_than_th == TRUE){
+  if(less_than_th){
     saveRDS(less_than_th, file.path(out_dir, "files_with_lower_debarcoding_threshold.RDS"))
   }
 }
 
-#' aggregate_files
-#'
-#' @description performs aggregation of debarcoded files
-#'
-#' @param fcs_files Character, full path to fcs_files.
-#' @param channels_to_keep Character vector with channel names to be kept.
-#' Default NULL
-#' @param outputFile Character, the names of the file that will be given
-#' @param maxcells Numeric, maximum cells to randomly aggregate from each file,
-#' default is set to NULL
-#' @param write_agg_file Logicle, if the fcs files should be saved, if TRUE
-#' files will be saved in getwd(). Default set to FALSE
-#' @param out_dir Character, pathway to where the files should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory
-#'
-#' @return aggregated flow frame
 
-aggregate_files <- function(fcs_files,
-                            channels_to_keep = NULL,
-                            outputFile = "aggregate.fcs",
-                            maxcells = NULL,
-                            write_agg_file = FALSE,
-                            out_dir = getwd()){
+.clean_signal_ind <- function(flow_frame,
+                              channels_to_clean = NULL,
+                              to_plot = "All",
+                              Segment = 1000,
+                              out_dir = getwd(),
+                              arcsine_transform = TRUE,
+                              non_used_bead_ch = NULL,
+                              MaxPercCut = 0.5,
+                              UseOnlyWorstChannels = TRUE,
+                              AllowFlaggedRerun = TRUE,
+                              AlwaysClean = TRUE,
+                              data_type = "MC",
+                              ...){
 
+  channels_to_transform <- find_mass_ch(flow_frame, value = FALSE)
+
+  if (arcsine_transform == TRUE){
+
+    if(data_type == "MC"){
+      ff_t <- flowCore::transform(flow_frame,
+                                  transformList(colnames(flow_frame)[channels_to_transform],
+                                                CytoNorm::cytofTransform))
+    }
+    else if (data_type == "FC"){
+      ff_t <- flowCore::transform(flow_frame,
+                                  transformList(colnames(flow_frame)[channels_to_transform],
+                                                arcsinhTransform(a = 0, b = 1/150, c = 0)))
+
+    }
+    else {
+      stop("specify data type MC or FC")
+    }
+
+  }
+  else {
+    ff_t <- flow_frame
+  }
+
+  if (!is.null(channels_to_clean)){
+
+    ch_to_clean <- which(colnames(flow_frame) %in% channels_to_clean)
+
+    if(!("TIME" %in% toupper(colnames(flow_frame)[ch_to_clean]))){
+      ind_Time <- grep("TIME", toupper(colnames(flow_frame)))
+      channels <- unique(sort(c(ch_to_clean, ind_Time)))
+    }
+
+  }
+  else {
+
+    if (!is.null(non_used_bead_ch)) {
+      non_bead_ch <- "140"
+    }
+    else {
+      non_bead_ch <- paste(non_used_bead_ch, collapse="|")
+    }
+
+    ind_Time <- grep("TIME", colnames(flow_frame), value = T, ignore.case = T)
+    ch_to_clean <- c(ind_Time, find_mass_ch(flow_frame, value = TRUE))
+    ind_nonbeads <- grep(non_bead_ch, colnames(flow_frame), value = TRUE)
+    channels <- ch_to_clean[!(ch_to_clean %in% ind_nonbeads)]
+    channels <- grep(paste(channels, collapse = "|"), colnames(flow_frame))
+  }
+
+  out_dir <- file.path(out_dir, "SignalCleaning")
+  if(!dir.exists(out_dir)){
+    dir.create(out_dir)
+  }
+
+  cleaned_data <- flowCut::flowCut(f = ff_t,
+                                   Segment = Segment,
+                                   MaxPercCut = MaxPercCut,
+                                   Channels = channels,
+                                   FileID = gsub("_beadNorm", "_flowCutCleaned",
+                                                 basename(flow_frame@description$FILENAME)),
+                                   Plot = to_plot,
+                                   Directory = out_dir,
+                                   UseOnlyWorstChannels = UseOnlyWorstChannels,
+                                   AllowFlaggedRerun = AllowFlaggedRerun,
+                                   AlwaysClean = AlwaysClean)
+
+  ff_t_clean <- cleaned_data$frame
+
+  if (arcsine_transform){
+    ff_clean <- flowCore::transform(ff_t_clean,
+                                    transformList(colnames(flow_frame)[channels_to_transform],
+                                                  cytofTransform.reverse))
+  }
+  else {
+    ff_clean <- ff_t_clean
+  }
+
+  return(ff_clean)
+}
+
+.save_bead_clean <- function(file,
+                             to_plot = "All",
+                             out_dir = getwd(),
+                             alpha = 0.01,
+                             data_type = "MC",
+                             channels_to_clean = NULL,
+                             Segment = 1000,
+                             arcsine_transform = TRUE,
+                             non_used_bead_ch = NULL,
+                             MaxPercCut = 0.5,
+                             UseOnlyWorstChannels = TRUE,
+                             AllowFlaggedRerun = TRUE,
+                             AlwaysClean = TRUE,
+                             ...){
+  # read fcs file
+  ff <- flowCore::read.FCS(filename = file,
+                           transformation = FALSE)
+
+  # clean flow rate
+  ff <- .clean_flow_rate_ind(flow_frame = ff,
+                             out_dir = out_dir,
+                             to_plot = to_plot,
+                             data_type = data_type)
+
+  # clean signal
+  ff <- .clean_signal_ind(flow_frame = ff,
+                          to_plot = to_plot,
+                          out_dir = out_dir,
+                          Segment = Segment,
+                          arcsine_transform = arcsine_transform,
+                          data_type = data_type,
+                          non_used_bead_ch = non_used_bead_ch)
+
+  # Write FCS files
+  flowCore::write.FCS(ff,
+                      file = file.path(out_dir, gsub("_beadNorm","_cleaned",
+                                                     basename(file))))
+}
+
+
+
+
+
+.aggregate_ind <- function(fcs_files,
+                           cores = 1,
+                           channels_to_keep = NULL,
+                           outputFile = "aggregate.fcs",
+                           maxcells = NULL,
+                           write_agg_file = FALSE,
+                           out_dir = getwd()) {
   nFiles <- length(fcs_files)
   flowFrame <- NULL
+
+  if(!dir.exists(aggregate_dir))(dir.create(aggregate_dir))
 
   for (i in seq_len(nFiles)) {
     f <- flowCore::read.FCS(fcs_files[i])
@@ -1416,10 +1540,95 @@ aggregate_files <- function(fcs_files,
 
   if(write_agg_file == TRUE){
 
-     flowCore::write.FCS(x = flowFrame, filename = file.path(out_dir, outputFile), endian = "big")
+    flowCore::write.FCS(x = flowFrame, filename = file.path(out_dir, outputFile), endian = "big")
   }
 
   return(flowFrame)
+}
+
+#' aggregate_files
+#'
+#' @description performs aggregation of debarcoded files
+#'
+#' @param fcs_files Character, full path to fcs_files.
+#' @param md Metadata.
+#' @param cores Number of cores to be used
+#' @param channels_to_keep Character vector with channel names to be kept.
+#' Default NULL
+#' @param outputFile Character, the names of the file that will be given
+#' @param maxcells Numeric, maximum cells to randomly aggregate from each file,
+#' default is set to NULL
+#' @param write_agg_file Logicle, if the fcs files should be saved, if TRUE
+#' files will be saved in getwd(). Default set to FALSE
+#' @param out_dir Character, pathway to where the files should be saved,
+#' only if argument to_plot = TRUE, default is set to working directory
+#'
+#' @return aggregated flow frame
+#'
+aggregate_files <- function(fcs_files,
+                            md,
+                            cores = 1,
+                            channels_to_keep = NULL,
+                            outputFile = "aggregate.fcs",
+                            maxcells = NULL,
+                            write_agg_file = FALSE,
+                            out_dir = getwd()){
+
+  # Check parameters
+  if(!is(files, "character") & !is(files, "list")) {
+    stop("files must be a character vector or a list")
+  }
+
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+
+  # Analysis with a single core
+  if (cores == 1) {
+    lapply(seq_len(nrow(md)), function(i) {
+      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
+
+      files_to_agg <- grep(pattern = patterns[2],
+                           grep(pattern = patterns[1],
+                                fcs_files, value = TRUE),
+                           value = TRUE)
+
+      print(paste0("Creating ", md[[i, "fcs_new_name"]]))
+
+      .aggregate_ind(fcs_files = files_to_agg,
+                     channels_to_keep = channels_to_keep,
+                     outputFile = outputFile,
+                     maxcells = maxcells,
+                     write_agg_file = write_agg_file,
+                     out_dir = out_dir)
+    }
+    )
+  }
+
+  # Parallelized analysis
+  else {
+    BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
+      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
+
+      files_to_agg <- grep(pattern = patterns[2],
+                           grep(pattern = patterns[1],
+                                fcs_files, value = TRUE),
+                           value = TRUE)
+
+      print(paste0("Creating ", md[[i, "fcs_new_name"]]))
+
+      .aggregate_ind(fcs_files = files_to_agg,
+                     channels_to_keep = channels_to_keep,
+                     outputFile = outputFile,
+                     maxcells = maxcells,
+                     write_agg_file = write_agg_file,
+                     out_dir = out_dir)
+    },
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+  }
+
+
 }
 
 #' gate_intact_cells
