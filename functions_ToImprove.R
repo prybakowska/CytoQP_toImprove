@@ -500,7 +500,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
     
 
     channels_to_keep <- c(m_to_keep, non_mass_ch)
-    channels_to_keep <- colnames(flow_frame)[sort(unique(channels_to_keep))]
+    channels_to_keep <- flowCore::colnames(flow_frame)[sort(unique(channels_to_keep))]
 
     flow_frame <- flow_frame[, channels_to_keep]
   }
@@ -590,24 +590,20 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                                          basename(file),
                                                          ignore.case = TRUE)))
 }
-#' bead_normalize
+#' Bead-based normalization
 #'
-#' @description Performs bead normalization using function from CATALYST package.
+#' @description Performs bead-based normalization using bead acquired during
+#' acquisition. It is based om functions from CATALYST package.
 #' normalized fcs files and plots are stored in out_dir directory
 #'
-#' @param files Character vector with the paths of the raw files
+#' @param files Character vector with the paths to the raw files
 #' @param cores Number of cores to be used
-#' @param flow_frame Untransformed flow frame.
 #' @param markers_to_keep Character vector, marker names to be kept after
 #' the normalization, can be full marker name e.g. "CD45" or "CD". Additionally,
 #' non_mass channels like Time, Event_lenght, Gaussian parameter and palladium
 #' barcoding channels are kept if non_mass_ch set to NULL.
 #' If NULL (default) all markers will be normalized and kept in flowframe,
 #' selection of the markers will reduce file volume and speedup the analysis.
-#' @param non_mass_ch Character vector, channel names to be kept after the 
-#' normalization, can be "151", "Time", "length". If NULL (default) the following 
-#' channels are kept: "Time", "length", "Ce140", "Eu151", "Eu153","Ho165", 
-#' "Lu175", "Center","Offset", "Width", "Residual","Pd" 
 #' @param beads character, as in normCytof, "dvs" (for bead masses 140, 151, 153 ,165, 175)
 #' or "beta" (for bead masses 139, 141, 159, 169, 175) or a numeric vector of masses.
 #' Default is set to "dvs"
@@ -621,6 +617,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #' median window used for bead smoothing (affects visualizations only!).
 #' @param remove_beads
 #' @param ... Additional arguments to pass to normCytof
+#' @param non_mass_channel 
 #'
 #' @return Bead normalized flow frame without the beads. Save plots to out_dir
 #'  if argument to_plot set to TRUE
