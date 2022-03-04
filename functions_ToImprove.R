@@ -188,13 +188,13 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 
     if(data_type == "MC"){
       ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
+                                  flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
                                                 CytoNorm::cytofTransform))
     }
     else if (data_type == "FC"){
       ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
-                                                arcsinhTransform(a = 0, b = 1/150, c = 0)))
+                                  flowCore::transformList(colnames(flow_frame)[channels_to_transform],
+                                                          flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
 
     }
     else {
@@ -208,10 +208,10 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 
   if (!is.null(channels_to_clean)){
 
-    ch_to_clean <- which(colnames(flow_frame) %in% channels_to_clean)
+    ch_to_clean <- which(flowCore::colnames(flow_frame) %in% channels_to_clean)
 
-    if(!("TIME" %in% toupper(colnames(flow_frame)[ch_to_clean]))){
-      ind_Time <- grep("TIME", toupper(colnames(flow_frame)))
+    if(!("TIME" %in% toupper(flowCore::colnames(flow_frame)[ch_to_clean]))){
+      ind_Time <- grep("TIME", toupper(flowCore::colnames(flow_frame)))
       channels <- unique(sort(c(ch_to_clean, ind_Time)))
     }
 
@@ -225,11 +225,11 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
       non_bead_ch <- paste(non_used_bead_ch, collapse="|")
     }
 
-    ind_Time <- grep("TIME", colnames(flow_frame), value = T, ignore.case = T)
+    ind_Time <- grep("TIME", flowCore::colnames(flow_frame), value = T, ignore.case = T)
     ch_to_clean <- c(ind_Time, find_mass_ch(flow_frame, value = TRUE))
-    ind_nonbeads <- grep(non_bead_ch, colnames(flow_frame), value = TRUE)
+    ind_nonbeads <- grep(non_bead_ch, flowCore::colnames(flow_frame), value = TRUE)
     channels <- ch_to_clean[!(ch_to_clean %in% ind_nonbeads)]
-    channels <- grep(paste(channels, collapse = "|"), colnames(flow_frame))
+    channels <- grep(paste(channels, collapse = "|"), flowCore::colnames(flow_frame))
   }
 
   out_dir <- file.path(out_dir, "SignalCleaning")
@@ -253,8 +253,8 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 
   if (arcsine_transform){
     ff_clean <- flowCore::transform(ff_t_clean,
-                                    transformList(colnames(flow_frame)[channels_to_transform],
-                                                  cytofTransform.reverse))
+                                    flowCore::transformList(colnames(flow_frame)[channels_to_transform],
+                                                  CytoNorm::cytofTransform.reverse))
   }
   else {
     ff_clean <- ff_t_clean
@@ -382,6 +382,14 @@ clean_files <- function(files,
 
   if (any(!is(cores, "numeric") | cores < 1)){
     stop("cores must be a positive number")
+  }
+  
+  if(!is(clean_flow_rate, "logical")){
+    stop("clean_flow_rate must be logical")
+  }
+  
+  if(!is(clean_signal, "logical")){
+    stop("clean_signal must be logical")
   }
 
   # Analysis with a single core

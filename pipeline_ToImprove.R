@@ -99,7 +99,7 @@ files <- list.files(bead_norm_dir,
 
 # Clean files
 clean_files(files[1], cores = 1,
-            out_dir = clean_dir, clean_flow_rate = TRUE,
+            out_dir = clean_dir,
             to_plot = "All",
             data_type = "MC",
             Segment = 1000,
