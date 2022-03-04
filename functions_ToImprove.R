@@ -478,8 +478,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                            ...){
 
   if (!is.null(markers_to_keep)){
-    print("in the loop")
-
+   
     matches <- paste(markers_to_keep, collapse="|")
 
     m_to_keep <- grep(matches, FlowSOM::GetMarkers(flow_frame, colnames(flow_frame)),
@@ -490,13 +489,13 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                         |Residual|Pd",
                           colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
-      print("time should be there")
+      
     } else {
-      matches_ch <- paste(non_mass_channel, collapse="|")
+      matches_ch <- paste(c(non_mass_channel, "Time"), collapse="|")
       non_mass_ch <- grep(matches_ch,
                           colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
-      print("time should NOT be there")
+     
     }
     
 
@@ -556,8 +555,8 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 
 .save_bead_normalize <- function(file,
                                  markers_to_keep,
-                                 non_mass_channel,
                                  beads,
+                                 non_mass_channel,
                                  norm_to_ref,
                                  remove_beads,
                                  to_plot,
