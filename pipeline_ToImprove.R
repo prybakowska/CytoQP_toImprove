@@ -21,6 +21,7 @@ dir <- file.path(getwd(), "data")
 raw_data_dir <- file.path(dir, "RawFiles")
 
 # set a directory where bead-normalized fcs files and plots will be saved
+
 bead_norm_dir <- file.path(dir, "BeadNorm")
 
 # define full pathway to the files that you want to normalize
@@ -198,7 +199,6 @@ files <- list.files(debarcode_dir,
 
 # Define out_dir for aggregated files
 aggregate_dir <- file.path(dir, "Aggregated")
-if(!dir.exists(aggregate_dir))(dir.create(aggregate_dir))
 
 # Bring metadata
 md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
@@ -210,22 +210,11 @@ md$barcode_name <- paste0(rownames(sample_key)[md$BARCODE])
 md$fcs_new_name <- paste0(md$ID, "_", md$STIM, "_", md$BATCH, ".fcs")
 
 # aggregate files batch by batch
-for (i in seq_len(nrow(md))){
-
-  patterns <- as.character(md[i, c("barcode_name", "BATCH")])
-
-  files_to_agg <- grep(pattern = patterns[2],
-                       grep(pattern = patterns[1],
-                            files, value = TRUE),
-                       value = TRUE)
-
-  print(paste0("Creating ", md[[i, "fcs_new_name"]]))
-
-  aggregate_files(fcs_files = files_to_agg,
-                  outputFile = md[[i, "fcs_new_name"]],
-                  out_dir = aggregate_dir,
-                  write_agg_file = TRUE)
-}
+aggregate_files(files,
+                md,
+                cores = 2,
+                out_dir = aggregate_dir,
+                write_agg_file = TRUE)
 
 # ------------------------------------------------------------------------------
 # Files gating -----------------------------------------------------------------
