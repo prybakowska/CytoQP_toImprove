@@ -21,7 +21,6 @@ dir <- file.path(getwd(), "data")
 raw_data_dir <- file.path(dir, "RawFiles")
 
 # set a directory where bead-normalized fcs files and plots will be saved
-
 bead_norm_dir <- file.path(dir, "BeadNorm")
 
 # define full pathway to the files that you want to normalize
@@ -99,8 +98,8 @@ files <- list.files(bead_norm_dir,
                     full.names = TRUE)
 
 # Clean files
-clean_files(files, cores = 2,
-            out_dir = clean_dir,
+clean_files(files[1], cores = 1,
+            out_dir = clean_dir, clean_flow_rate = TRUE,
             to_plot = "All",
             data_type = "MC",
             Segment = 1000,

@@ -10,7 +10,7 @@ find_mass_ch <- function(flow_frame,
                          channels = "Time|Event_length|Center|Offset|Width|Residual|SSC|FSC|File_scattered",
                          ...){
   non_mass_ch <- grep(c(channels),
-       colnames(flow_frame),
+       flowCore::colnames(flow_frame),
        invert = TRUE, ...)
   return(non_mass_ch)
 }
@@ -27,7 +27,7 @@ find_mass_ch <- function(flow_frame,
 
 .flow_rate_bin_addapted <- function (x, second_fraction = 0.1, timeCh = timeCh, timestep = timestep)
 {
-  xx <- exprs(x)[, timeCh]
+  xx <- flowCore::exprs(x)[, timeCh]
   idx <- c(1:nrow(x))
   endsec <- ceiling(timestep * max(xx))
   lenx <- length(xx)
@@ -70,9 +70,9 @@ find_mass_ch <- function(flow_frame,
   }
   else if (data_type == "FC") {
     time_division <- 1
-    word <- which(grepl("TIMESTEP", names(keyword(flowSet(ff)[[1]])),
+    word <- which(grepl("TIMESTEP", names(flowCore::keyword(flowCore::flowSet(ff)[[1]])),
                         ignore.case = TRUE))
-    timestep <- as.numeric(keyword(flowSet(ff)[[1]])[[word[1]]])
+    timestep <- as.numeric(flowCore::keyword(flowCore::flowSet(ff)[[1]])[[word[1]]])
   }
   else{
     stop("type of data MC or FC needs to be specified")
@@ -151,10 +151,10 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
   anoms = as.data.frame(FlowRateQC$anoms)
   anoms_points = as.data.frame(cbind(sec_anom = frequencies$secbin[anoms$index],
                                      count_anom = anoms$anoms))
-  xgraph <- ggplot2::ggplot(frequencies, aes_string(x = "secbin", y = "tbCounts")) +
-    theme_bw() + theme(panel.grid.major = element_blank(),
+  xgraph <- ggplot2::ggplot(frequencies, ggplot2::aes_string(x = "secbin", y = "tbCounts")) +
+    ggplot2::theme_bw() + ggplot2::theme(panel.grid.major = element_blank(),
                        panel.grid.minor = element_blank(), text = element_text(size = 30)) +
-    geom_line(colour = "darkblue")
+    ggplot2::geom_line(colour = "darkblue")
   xgraph <- xgraph + ggplot2::labs(x = lab, y = paste0("Number of events per 1/",
                                                        1/second_fraction, " of a second"))
   if (!is.null(anoms_points)) {
@@ -265,6 +265,8 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 
 .save_bead_clean <- function(file,
                              to_plot = "All",
+                             clean_flow_rate = TRUE,
+                             clean_signal = TRUE,
                              out_dir = getwd(),
                              alpha = 0.01,
                              data_type = "MC",
@@ -280,21 +282,31 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
   # read fcs file
   ff <- flowCore::read.FCS(filename = file,
                            transformation = FALSE)
+  
+  if(clean_flow_rate){
+    # clean flow rate
+    message("cleaning flowrate for ", basename(file))
+    print(clean_flow_rate)
+    ff <- .clean_flow_rate_ind(flow_frame = ff,
+                               out_dir = out_dir,
+                               to_plot = to_plot,
+                               data_type = data_type)
 
-  # clean flow rate
-  ff <- .clean_flow_rate_ind(flow_frame = ff,
-                            out_dir = out_dir,
+  }
+
+  if(clean_signal){
+    # clean signal
+    message("cleaning signal for ", basename(file))
+    ff <- .clean_signal_ind(flow_frame = ff,
                             to_plot = to_plot,
-                            data_type = data_type)
-
-  # clean signal
-  ff <- .clean_signal_ind(flow_frame = ff,
-                         to_plot = to_plot,
-                         out_dir = out_dir,
-                         Segment = Segment,
-                         arcsine_transform = arcsine_transform,
-                         data_type = data_type,
-                         non_used_bead_ch = non_used_bead_ch)
+                            out_dir = out_dir,
+                            Segment = Segment,
+                            arcsine_transform = arcsine_transform,
+                            data_type = data_type,
+                            non_used_bead_ch = non_used_bead_ch)
+  }
+  
+ 
 
   # Write FCS files
   flowCore::write.FCS(ff,
@@ -333,19 +345,25 @@ plot_flowrate <- function (FlowRateQC, data_type = "MC")
 #' @param UseOnlyWorstChannels as in flowCut, logical, automated detection of the
 #' worst channel that will be used for cleaninig
 #' @param AllowFlaggedRerun as in flowCut, logical, specify if flowCut will run
-# second time in case the file was flagged
+#  second time in case the file was flagged
 #' @param AlwaysClean as in flowCut, logicle. The file will be cleaned even if it has a
 #' relatively stable signal. The segments that are 7 SD away from the mean of all
 #' segments are removed
-#'
+#' 
 #' @return Cleaned, untransformed flow frame if arcsine_transform argument
 #' set to TRUE, otherwise transformed flow frame is returned. Save plots with prefix
 #' "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir if parameter to_plot
 #' set to "All" or "Flagged Only".
+#' 
+#' @import ggplot2
+#'
+#' @export
 
 clean_files <- function(files,
                         cores = 1,
                         to_plot = "All",
+                        clean_flow_rate = TRUE,
+                        clean_signal = TRUE,
                         out_dir = getwd(),
                         alpha = 0.01,
                         data_type = "MC",
@@ -372,6 +390,8 @@ clean_files <- function(files,
     lapply(files, function(x) {
       .save_bead_clean(x,
                        to_plot = to_plot,
+                       clean_flow_rate = clean_flow_rate,
+                       clean_signal = clean_signal,
                        out_dir = out_dir,
                        alpha = alpha,
                        data_type = data_type,
@@ -390,6 +410,8 @@ clean_files <- function(files,
     BiocParallel::bplapply(files, function(x) {
       .save_bead_clean(x,
                        to_plot = to_plot,
+                       clean_flow_rate = clean_flow_rate,
+                       clean_signal = clean_signal,
                        out_dir = out_dir,
                        alpha = alpha,
                        data_type = data_type,
@@ -618,7 +640,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #' the sample. It is based on functions from CATALYST package.
 #' normalized fcs files and plots are stored in out_dir directory
 #'
-#' @param files Character vector with the paths to the raw files.
+#' @param files Character vector or list with the paths of the raw files.
 #' @param cores Number of cores to be used. Works only for not-Widows users.
 #' @param markers_to_keep Character vector, marker names to be kept after
 #' the normalization, can be full marker name e.g. "CD45" or "CD". 
@@ -692,7 +714,7 @@ bead_normalize <- function(files,
                            k = 80,
                            ...){
   # Check parameters
-  if(!is(files, "character")) {
+  if(!is(files, "character") & !is(files, "list")) {
     stop("files must be a character vector or a list")
   }
 
@@ -1440,13 +1462,13 @@ debarcode_files <- function(fcs_files,
 
     if(data_type == "MC"){
       ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
+                                  flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
                                                 CytoNorm::cytofTransform))
     }
     else if (data_type == "FC"){
       ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
-                                                arcsinhTransform(a = 0, b = 1/150, c = 0)))
+                                  flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
+                                                          flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
 
     }
     else {
@@ -1460,10 +1482,10 @@ debarcode_files <- function(fcs_files,
 
   if (!is.null(channels_to_clean)){
 
-    ch_to_clean <- which(colnames(flow_frame) %in% channels_to_clean)
+    ch_to_clean <- which(flowCore::colnames(flow_frame) %in% channels_to_clean)
 
-    if(!("TIME" %in% toupper(colnames(flow_frame)[ch_to_clean]))){
-      ind_Time <- grep("TIME", toupper(colnames(flow_frame)))
+    if(!("TIME" %in% toupper(flowCore::colnames(flow_frame)[ch_to_clean]))){
+      ind_Time <- grep("TIME", toupper(flowCore::colnames(flow_frame)))
       channels <- unique(sort(c(ch_to_clean, ind_Time)))
     }
 
@@ -1477,11 +1499,11 @@ debarcode_files <- function(fcs_files,
       non_bead_ch <- paste(non_used_bead_ch, collapse="|")
     }
 
-    ind_Time <- grep("TIME", colnames(flow_frame), value = T, ignore.case = T)
+    ind_Time <- grep("TIME", flowCore::colnames(flow_frame), value = T, ignore.case = T)
     ch_to_clean <- c(ind_Time, find_mass_ch(flow_frame, value = TRUE))
-    ind_nonbeads <- grep(non_bead_ch, colnames(flow_frame), value = TRUE)
+    ind_nonbeads <- grep(non_bead_ch, flowCore::colnames(flow_frame), value = TRUE)
     channels <- ch_to_clean[!(ch_to_clean %in% ind_nonbeads)]
-    channels <- grep(paste(channels, collapse = "|"), colnames(flow_frame))
+    channels <- grep(paste(channels, collapse = "|"), flowCore::colnames(flow_frame))
   }
 
   out_dir <- file.path(out_dir, "SignalCleaning")
@@ -1505,8 +1527,8 @@ debarcode_files <- function(fcs_files,
 
   if (arcsine_transform){
     ff_clean <- flowCore::transform(ff_t_clean,
-                                    transformList(colnames(flow_frame)[channels_to_transform],
-                                                  cytofTransform.reverse))
+                                    flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
+                                                  CytoNorm::cytofTransform.reverse))
   }
   else {
     ff_clean <- ff_t_clean
