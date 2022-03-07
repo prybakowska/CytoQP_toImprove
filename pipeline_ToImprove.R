@@ -20,7 +20,12 @@ dir <- file.path(getwd(), "data")
 # set input directory (pathway to the files that are going to be normalized)
 raw_data_dir <- file.path(dir, "RawFiles")
 
+<<<<<<< HEAD
 # set a directory where bead-normalized fcs files and plots will be saved
+=======
+# set and create the directory where bead-normalized fcs files and
+# diagnostic plots will be saved
+>>>>>>> 01ab44ffb2c3270784bdd0d635664280694cc60d
 bead_norm_dir <- file.path(dir, "BeadNorm")
 
 # define full pathway to the files that you want to normalize
