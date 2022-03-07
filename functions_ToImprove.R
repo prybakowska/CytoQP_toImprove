@@ -1921,6 +1921,74 @@ gate_live_cells <- function(flow_frame,
 
 }
 
+.save_bead_gate <- function(file,
+                            n_plots = 3,
+                            gate_dir = gate_dir){
+
+  n_plots <- 3
+
+  png(file.path(gate_dir, paste0("gating.png")),
+      width = n_plots * 300,
+      height = length(files) * 300)
+  layout(matrix(1:(length(files) * n_plots),
+                ncol = n_plots,
+                byrow = TRUE))
+
+  ff <- flowCore::read.FCS(filename = file,
+                           transformation = FALSE)
+
+  ff <- gate_intact_cells(flow_frame = ff,
+                          file_name = basename(file))
+
+  ff <- gate_singlet_cells(flow_frame = ff,
+                           channels = "Event_length",
+                           file_name = basename(file))
+
+  ff <- gate_live_cells(flow_frame = ff,
+                        viability_channel = "Pt195Di")
+
+  flowCore::write.FCS(ff, file.path(gate_dir,
+                                    gsub(".fcs", "_gated.fcs", basename(file))))
+
+  dev.off()
+
+}
+
+
+gate_files <- function(files,
+                       cores = 1,
+                       gate_dir = getwd()) {
+
+  # Check parameters
+  if(!is(files, "character") & !is(files, "list")) {
+    stop("files must be a character vector or a list")
+  }
+
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+  if (!dir.exists(gate_dir)) {
+    dir.create(gate_dir)
+  }
+
+  # Analysis with a single core
+  if (cores == 1) {
+    lapply(files, function(x) {
+      .save_bead_gate(x,
+                      gate_dir = gate_dir)})
+  }
+
+  # Parallelized analysis
+  else {
+    BiocParallel::bplapply(files, function(x) {
+      .save_bead_gate(x,
+                      n_plots = n_plots,
+                      gate_dir = gate_dir)},
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+  }
+}
+
 #' plot_batch
 #'
 #' @description Plots batch effect using UMAP and clustering markers

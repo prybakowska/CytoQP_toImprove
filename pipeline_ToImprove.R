@@ -236,9 +236,6 @@ aggregate_dir <- file.path(dir, "Aggregated")
 
 # Set output directory
 gate_dir <- file.path(dir, "Gated")
-if (!dir.exists(gate_dir)) {
-  dir.create(gate_dir)
-}
 
 # List files for gating
 files <- list.files(path = aggregate_dir,
@@ -246,35 +243,8 @@ files <- list.files(path = aggregate_dir,
                     full.names = TRUE)
 
 # Gate the files and plot the gating strategy for each file
-n_plots <- 3
-png(file.path(gate_dir, paste0("gating.png")),
-    width = n_plots * 300,
-    height = length(files) * 300)
-layout(matrix(1:(length(files) * n_plots),
-              ncol = n_plots,
-              byrow = TRUE))
 
-for (file in files){
-
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
-  ff <- gate_intact_cells(flow_frame = ff,
-                          file_name = basename(file))
-
-  ff <- gate_singlet_cells(flow_frame = ff,
-                           channels = "Event_length",
-                           file_name = basename(file))
-
-  ff <- gate_live_cells(flow_frame = ff,
-                        viability_channel = "Pt195Di",
-                        out_dir = gate_dir)
-
-  flowCore::write.FCS(ff, file.path(gate_dir,
-                                    gsub(".fcs", "_gated.fcs", basename(file))))
-}
-
-dev.off()
+gate_files(files, cores = 1, gate_dir = gate_dir)
 
 # ------------------------------------------------------------------------------
 # Normalization using reference sample -----------------------------------------
