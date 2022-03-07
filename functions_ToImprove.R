@@ -1,10 +1,15 @@
+#' Finds all the mass/fluorochrome channels for the flow frame
+#' 
 #' @description Finds all the mass channels
 #'
 #' @param flow_frame Untransformed flow frame
-#' @param channels Pattern for non-mass channels
+#' @param channels Pattern for non-mass channels, default is
+#' "Time|Event_length|Center|Offset|Width|Residual|SSC|FSC|File_scattered"
 #' @param ... Additional arguments to pass to grep
 #'
 #' @return Logical vector with TRUE values for mass channels
+#' 
+#' @export
 
 find_mass_ch <- function(flow_frame,
                          channels = "Time|Event_length|Center|Offset|Width|Residual|SSC|FSC|File_scattered",
@@ -254,7 +259,7 @@ find_mass_ch <- function(flow_frame,
 
   if (arcsine_transform){
     ff_clean <- flowCore::transform(ff_t_clean,
-                                    flowCore::transformList(colnames(flow_frame)[channels_to_transform],
+                                    flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
                                                   CytoNorm::cytofTransform.reverse))
   }
   else {
@@ -314,7 +319,7 @@ find_mass_ch <- function(flow_frame,
                                                        basename(file))))
 }
 
-#' Clean flow rate and signal 
+#' Clean flow rate and signal
 #'
 #' @description Cleans the flow rate using functions from flowAI package and
 #' the signal using flowCut package.
@@ -322,42 +327,61 @@ find_mass_ch <- function(flow_frame,
 #' @param files Character vector or list with the paths of the raw files.
 #' @param cores Number of cores to be used.
 #' @param to_plot Character variable that indicates if plots should be generated.
-#' The default is "All", which generates plots for flow rate and all channels. 
-#' Other options are "Flagged Only", plots the flow rate and channels that were 
+#' The default is "All", which generates plots for flow rate and all channels.
+#' Other options are "Flagged Only", plots the flow rate and channels that were
 #' spotted with flowCut as incorrect and "None", does not plots anything.
 #' @param clean_flow_rate Logical, if flow rate should be cleaned.
 #' @param clean_signal, Logical, if signal should be cleaned.
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to file.path(getwd(), Cleaned).
-#' @param alpha numeric, as in flowAI::flow_auto_qc. The statistical
+#' @param Alpha numeric, as in flowAI::flow_auto_qc. The statistical
 #' significance level used to accept anomalies. The default value is 0.01.
-#' @param data_type Character, if MC (mass cytometry) of FC (flow cytometry) 
+#' @param data_type Character, if MC (mass cytometry) of FC (flow cytometry)
 #' data are analyzed.
-#' @param channels_to_clean Character vector of the channels that needs 
+#' @param channels_to_clean Character vector of the channels that needs
 #' to be cleaned.
 #' @param Segment As in flowCut, an integer value that specifies the
 #' number of events in each segment to be analyzed.Default is 1000 events.
 #' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5, default is set to TRUE
+#' arcsine transformation and cofactor 5, default is set to TRUE.
 #' @param non_used_bead_ch Character vector, bead channels that does not contain
 #' any marker information, thus do not need to be cleaned and used
 #' for further analysis.
 #' @param MaxPercCut As in flowCut, numeric between 0-1 the maximum percentage of
 #' event that will be removed form the data.
-#' @param UseOnlyWorstChannels as in flowCut, logical, automated detection of the
+#' @param UseOnlyWorstChannels As in flowCut, logical, automated detection of the
 #' worst channel that will be used for cleaning.
 #' @param AllowFlaggedRerun as in flowCut, logical, specify if flowCut will run
 #  second time in case the file was flagged.
-#' @param AlwaysClean as in flowCut, logical. The file will be cleaned even if 
-#' it has a relatively stable signal. The segments that are 7 SD away 
+#' @param AlwaysClean as in flowCut, logical. The file will be cleaned even if
+#' it has a relatively stable signal. The segments that are 7 SD away
 #' from the mean of all segments are removed.
 #' @param ... Additional arguments to pass to flowcut.
-#' 
+#'
 #' @return Cleaned, untransformed flow frame if arcsine_transform argument
 #' set to TRUE, otherwise transformed flow frame is returned. Save plots
-#' with prefix "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir 
+#' with prefix "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir
 #' if parameter to_plot set to "All" or "Flagged Only".
 #' 
+#' #' @examples 
+#' # Set and create the directory where cleaned fcs files will be saved
+#'clean_dir <- file.path(dir, "Cleaned")
+#'
+#'# Define which files will be cleaned
+#'files <- list.files(bead_norm_dir,
+#'                    ignore.case = TRUE,
+#'                    pattern = "_beadNorm.fcs$",
+#'                    full.names = TRUE)
+#'
+#'# Clean files
+#'clean_files(files, cores = 1,
+#'            out_dir = clean_dir,
+#'            to_plot = "All",
+#'            data_type = "MC",
+#'            Segment = 1000,
+#'            arcsine_transform = TRUE,
+#'            non_used_bead_ch = "140")
+#'
 #' @import ggplot2
 #'
 #' @export
@@ -447,13 +471,13 @@ clean_files <- function(files,
 
 #' Creates baseline file for bead normalization
 #'
-#' @description Creates the reference flow frame for which mean beads 
+#' @description Creates the reference flow frame for which mean beads
 #' values will be computed and used during the normalization.
 #'
 #' @param fcs_files Character, path to fcs files to be normalized.
-#' @param beads Character, as in CATALYST::normCytof, "dvs" 
+#' @param beads Character, as in CATALYST::normCytof, "dvs"
 #' (for bead masses 140, 151, 153 ,165, 175)
-#' or "beta" (for bead masses 139, 141, 159, 169, 175) 
+#' or "beta" (for bead masses 139, 141, 159, 169, 175)
 #' or a numeric vector of masses. Default is set to "dvs".
 #' @param to_plot Logical, indicates if plots should be generated,
 #' default set to FALSE
@@ -461,16 +485,14 @@ clean_files <- function(files,
 #' only if argument to_plot = TRUE, default is set to working directory.
 #' @param k The same as in CATALYST::normCytof, integer width of the
 #' median window used for bead smoothing (affects visualizations only).
-#' @param ncells number of cells to be aggregated per each file, defaults is 
+#' @param ncells number of cells to be aggregated per each file, defaults is
 #' set to 25000 per file.
 #' @param ... Additional arguments to pass to CATALYST::normCytof.
 #'
-#' @return Returns reference, aggregated flow frame. 
-#' 
-#' @examples 
-#' 
-#' @export
-#' #' # set input directory (pathway to the files that are going to be normalized)
+#' @return Returns reference, aggregated flow frame.
+#'
+#' @examples
+#' # set input directory (pathway to the files that are going to be normalized)
 #' raw_data_dir <- file.path(dir, "RawFiles")
 #'
 #' # set a directory where bead-normalized fcs files and plots will be saved
@@ -486,8 +508,7 @@ clean_files <- function(files,
 #' ref_sample <- baseline_file(fcs_files = files,
 #'                             beads = "dvs",
 #'                             out_dir = bead_norm_dir)
-#'
- 
+#' @export
 baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                        out_dir = getw(), k = 80, ncells = 25000, ...){
 
@@ -655,7 +676,6 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #'
 #' @description Performs bead-based normalization using beads spiked in 
 #' the sample. It is based on functions from CATALYST package.
-#' normalized fcs files and plots are stored in out_dir directory
 #'
 #' @param files Character vector or list with the paths of the raw files.
 #' @param cores Number of cores to be used. Works only for not-Widows users.
