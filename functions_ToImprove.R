@@ -1429,6 +1429,8 @@ debarcode_files <- function(fcs_files,
 #'
 aggregate_files <- function(fcs_files,
                             md,
+                            barcode_column,
+                            batch_column,
                             cores = 1,
                             channels_to_keep = NULL,
                             outputFile = "aggregate.fcs",
@@ -1449,7 +1451,7 @@ aggregate_files <- function(fcs_files,
   # Analysis with a single core
   if (cores == 1) {
     lapply(seq_len(nrow(md)), function(i) {
-      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
+      patterns <- as.character(md[i, c(barcode_column, batch_column)])
 
       files_to_agg <- grep(pattern = patterns[2],
                            grep(pattern = patterns[1],
@@ -1457,6 +1459,8 @@ aggregate_files <- function(fcs_files,
                            value = TRUE)
 
       print(paste0("Creating ", md[[i, "fcs_new_name"]]))
+
+      outputFile = md[[i, "fcs_new_name"]]
 
       .aggregate_ind(fcs_files = files_to_agg,
                      channels_to_keep = channels_to_keep,
@@ -1471,7 +1475,7 @@ aggregate_files <- function(fcs_files,
   # Parallelized analysis
   else {
     BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
-      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
+      patterns <- as.character(md[i, c(barcode_column, batch_column)])
 
       files_to_agg <- grep(pattern = patterns[2],
                            grep(pattern = patterns[1],
@@ -1479,6 +1483,8 @@ aggregate_files <- function(fcs_files,
                            value = TRUE)
 
       print(paste0("Creating ", md[[i, "fcs_new_name"]]))
+
+      outputFile = md[[i, "fcs_new_name"]]
 
       .aggregate_ind(fcs_files = files_to_agg,
                      channels_to_keep = channels_to_keep,
@@ -1804,14 +1810,7 @@ gate_live_cells <- function(flow_frame,
                             n_plots = 3,
                             gate_dir = gate_dir){
 
-  n_plots <- 3
 
-  png(file.path(gate_dir, paste0("gating.png")),
-      width = n_plots * 300,
-      height = length(files) * 300)
-  layout(matrix(1:(length(files) * n_plots),
-                ncol = n_plots,
-                byrow = TRUE))
 
   ff <- flowCore::read.FCS(filename = file,
                            transformation = FALSE)
@@ -1828,8 +1827,6 @@ gate_live_cells <- function(flow_frame,
 
   flowCore::write.FCS(ff, file.path(gate_dir,
                                     gsub(".fcs", "_gated.fcs", basename(file))))
-
-  dev.off()
 
 }
 
@@ -1851,6 +1848,15 @@ gate_files <- function(files,
     dir.create(gate_dir)
   }
 
+  n_plots <- 3
+
+  png(file.path(gate_dir, paste0("gating.png")),
+      width = n_plots * 300,
+      height = length(files) * 300)
+  layout(matrix(1:(length(files) * n_plots),
+                ncol = n_plots,
+                byrow = TRUE))
+
   # Analysis with a single core
   if (cores == 1) {
     lapply(files, function(x) {
@@ -1866,6 +1872,9 @@ gate_files <- function(files,
                       gate_dir = gate_dir)},
       BPPARAM = BiocParallel::MulticoreParam(workers = cores))
   }
+
+  dev.off()
+
 }
 
 #' plot_batch

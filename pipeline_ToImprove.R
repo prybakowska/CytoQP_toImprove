@@ -210,6 +210,8 @@ md$fcs_new_name <- paste0(md$ID, "_", md$STIM, "_", md$BATCH, ".fcs")
 # aggregate files batch by batch
 aggregate_files(files,
                 md,
+                barcode_column = "barcode_name",
+                batch_column = "BATCH",
                 cores = 2,
                 out_dir = aggregate_dir,
                 write_agg_file = TRUE)
