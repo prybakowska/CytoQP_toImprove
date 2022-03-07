@@ -1340,144 +1340,6 @@ debarcode_files <- function(fcs_files,
 }
 
 
-.clean_signal_ind <- function(flow_frame,
-                              channels_to_clean = NULL,
-                              to_plot = "All",
-                              Segment = 1000,
-                              out_dir = getwd(),
-                              arcsine_transform = TRUE,
-                              non_used_bead_ch = NULL,
-                              MaxPercCut = 0.5,
-                              UseOnlyWorstChannels = TRUE,
-                              AllowFlaggedRerun = TRUE,
-                              AlwaysClean = TRUE,
-                              data_type = "MC",
-                              ...){
-
-  channels_to_transform <- find_mass_ch(flow_frame, value = FALSE)
-
-  if (arcsine_transform == TRUE){
-
-    if(data_type == "MC"){
-      ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
-                                                CytoNorm::cytofTransform))
-    }
-    else if (data_type == "FC"){
-      ff_t <- flowCore::transform(flow_frame,
-                                  transformList(colnames(flow_frame)[channels_to_transform],
-                                                arcsinhTransform(a = 0, b = 1/150, c = 0)))
-
-    }
-    else {
-      stop("specify data type MC or FC")
-    }
-
-  }
-  else {
-    ff_t <- flow_frame
-  }
-
-  if (!is.null(channels_to_clean)){
-
-    ch_to_clean <- which(colnames(flow_frame) %in% channels_to_clean)
-
-    if(!("TIME" %in% toupper(colnames(flow_frame)[ch_to_clean]))){
-      ind_Time <- grep("TIME", toupper(colnames(flow_frame)))
-      channels <- unique(sort(c(ch_to_clean, ind_Time)))
-    }
-
-  }
-  else {
-
-    if (!is.null(non_used_bead_ch)) {
-      non_bead_ch <- "140"
-    }
-    else {
-      non_bead_ch <- paste(non_used_bead_ch, collapse="|")
-    }
-
-    ind_Time <- grep("TIME", colnames(flow_frame), value = T, ignore.case = T)
-    ch_to_clean <- c(ind_Time, find_mass_ch(flow_frame, value = TRUE))
-    ind_nonbeads <- grep(non_bead_ch, colnames(flow_frame), value = TRUE)
-    channels <- ch_to_clean[!(ch_to_clean %in% ind_nonbeads)]
-    channels <- grep(paste(channels, collapse = "|"), colnames(flow_frame))
-  }
-
-  out_dir <- file.path(out_dir, "SignalCleaning")
-  if(!dir.exists(out_dir)){
-    dir.create(out_dir)
-  }
-
-  cleaned_data <- flowCut::flowCut(f = ff_t,
-                                   Segment = Segment,
-                                   MaxPercCut = MaxPercCut,
-                                   Channels = channels,
-                                   FileID = gsub("_beadNorm", "_flowCutCleaned",
-                                                 basename(flow_frame@description$FILENAME)),
-                                   Plot = to_plot,
-                                   Directory = out_dir,
-                                   UseOnlyWorstChannels = UseOnlyWorstChannels,
-                                   AllowFlaggedRerun = AllowFlaggedRerun,
-                                   AlwaysClean = AlwaysClean)
-
-  ff_t_clean <- cleaned_data$frame
-
-  if (arcsine_transform){
-    ff_clean <- flowCore::transform(ff_t_clean,
-                                    transformList(colnames(flow_frame)[channels_to_transform],
-                                                  cytofTransform.reverse))
-  }
-  else {
-    ff_clean <- ff_t_clean
-  }
-
-  return(ff_clean)
-}
-
-.save_bead_clean <- function(file,
-                             to_plot = "All",
-                             out_dir = getwd(),
-                             alpha = 0.01,
-                             data_type = "MC",
-                             channels_to_clean = NULL,
-                             Segment = 1000,
-                             arcsine_transform = TRUE,
-                             non_used_bead_ch = NULL,
-                             MaxPercCut = 0.5,
-                             UseOnlyWorstChannels = TRUE,
-                             AllowFlaggedRerun = TRUE,
-                             AlwaysClean = TRUE,
-                             ...){
-  # read fcs file
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
-  # clean flow rate
-  ff <- .clean_flow_rate_ind(flow_frame = ff,
-                             out_dir = out_dir,
-                             to_plot = to_plot,
-                             data_type = data_type)
-
-  # clean signal
-  ff <- .clean_signal_ind(flow_frame = ff,
-                          to_plot = to_plot,
-                          out_dir = out_dir,
-                          Segment = Segment,
-                          arcsine_transform = arcsine_transform,
-                          data_type = data_type,
-                          non_used_bead_ch = non_used_bead_ch)
-
-  # Write FCS files
-  flowCore::write.FCS(ff,
-                      file = file.path(out_dir, gsub("_beadNorm","_cleaned",
-                                                     basename(file))))
-}
-
-
-
-
-
 .aggregate_ind <- function(fcs_files,
                            cores = 1,
                            channels_to_keep = NULL,
@@ -1936,6 +1798,74 @@ gate_live_cells <- function(flow_frame,
 
   return(ff)
 
+}
+
+.save_bead_gate <- function(file,
+                            n_plots = 3,
+                            gate_dir = gate_dir){
+
+  n_plots <- 3
+
+  png(file.path(gate_dir, paste0("gating.png")),
+      width = n_plots * 300,
+      height = length(files) * 300)
+  layout(matrix(1:(length(files) * n_plots),
+                ncol = n_plots,
+                byrow = TRUE))
+
+  ff <- flowCore::read.FCS(filename = file,
+                           transformation = FALSE)
+
+  ff <- gate_intact_cells(flow_frame = ff,
+                          file_name = basename(file))
+
+  ff <- gate_singlet_cells(flow_frame = ff,
+                           channels = "Event_length",
+                           file_name = basename(file))
+
+  ff <- gate_live_cells(flow_frame = ff,
+                        viability_channel = "Pt195Di")
+
+  flowCore::write.FCS(ff, file.path(gate_dir,
+                                    gsub(".fcs", "_gated.fcs", basename(file))))
+
+  dev.off()
+
+}
+
+
+gate_files <- function(files,
+                       cores = 1,
+                       gate_dir = getwd()) {
+
+  # Check parameters
+  if(!is(files, "character") & !is(files, "list")) {
+    stop("files must be a character vector or a list")
+  }
+
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+  if (!dir.exists(gate_dir)) {
+    dir.create(gate_dir)
+  }
+
+  # Analysis with a single core
+  if (cores == 1) {
+    lapply(files, function(x) {
+      .save_bead_gate(x,
+                      gate_dir = gate_dir)})
+  }
+
+  # Parallelized analysis
+  else {
+    BiocParallel::bplapply(files, function(x) {
+      .save_bead_gate(x,
+                      n_plots = n_plots,
+                      gate_dir = gate_dir)},
+      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+  }
 }
 
 #' plot_batch
