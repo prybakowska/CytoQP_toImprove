@@ -2,9 +2,9 @@
 # set your working directory to the folder where the files were downloaded
 # using setwd()
 
-#  execute
-source('installation.R')
-source('functions.R')
+# execute
+# source('installation.R')
+# source('functions.R')
 source(file = "../CytoQP_toImprove/functions_ToImprove.R")
 
 # create data folder where all analysis will be stored
@@ -20,12 +20,11 @@ dir <- file.path(getwd(), "data")
 # set input directory (pathway to the files that are going to be normalized)
 raw_data_dir <- file.path(dir, "RawFiles")
 
-# set and create the directory where bead-normalized fcs files and
-# diagnostic plots will be saved
+# set a directory where bead-normalized fcs files and plots will be saved
 bead_norm_dir <- file.path(dir, "BeadNorm")
 
 # define full pathway to the files that you want to normalize
-files <- list.files(file.path(raw_data_dir),
+files <- list.files(raw_data_dir,
                     pattern = ".FCS$",
                     full.names = T)
 
@@ -38,8 +37,10 @@ ref_sample <- baseline_file(fcs_files = files,
 # Normalize files
 bead_normalize(files, cores = 1,
                out_dir = bead_norm_dir,
+               non_mass_channel = NULL,
                norm_to_ref = ref_sample,
                to_plot = TRUE,
+               remove_beads = TRUE,
                k = 80,
                markers_to_keep = c("CD", "HLA", "IgD", "TCR", "Ir",
                                    "Viability","IL", "IFNa",
@@ -97,7 +98,7 @@ files <- list.files(bead_norm_dir,
                     full.names = TRUE)
 
 # Clean files
-clean_files(files, cores = 2,
+clean_files(files[1], cores = 1,
             out_dir = clean_dir,
             to_plot = "All",
             data_type = "MC",
