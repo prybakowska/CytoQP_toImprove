@@ -451,17 +451,13 @@ norm_dir <- file.path(dir, "CytoNormed")
 # Set output directory
 analysis_dir <- file.path(dir, "Analysis")
 
-if (!dir.exists(analysis_dir)) {
-  dir.create(analysis_dir)
-}
-
 files <- list.files(norm_dir,
                     pattern = ".fcs$",
                     full.names = TRUE)
 batch_pattern <- stringr::str_match(basename(files), ".*(day[0-9]*).*.fcs")[,2]
 
 # Build UMAP on aggregated files
-se.seed(1)
+set.seed(1)
 UMAP_res <- UMAP(fcs_files = files,
                  clustering_markers = c("CD", "HLA", "IgD"),
                  functional_markers = c("IL", "TNF", "TGF", "Gr", "IFNa", "MIP", "MCP1"),

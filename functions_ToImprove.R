@@ -2141,6 +2141,10 @@ UMAP <- function(fcs_files,
                  arcsine_transform = TRUE,
                  cells_total = 1000){
 
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
+
   ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = fcs_files,
                                          cTotal = length(fcs_files) * cells_total,
                                          verbose = TRUE,
@@ -2185,17 +2189,11 @@ UMAP <- function(fcs_files,
                                        all_markers))
 
   df$file_id <- ff_agg@exprs[,"File2"]
-  df$batch <- NA
-  df$sample_name <- NA
-
-  for (i in 1:length(fcs_files)){
-
-    file <- fcs_files[i]
-    batch <- stringr::str_match(file, batch_pattern)[,1]
-    df[df[, "file_id"] == i, "batch"] <- batch
-    sample_id <- gsub(".fcs|_gated.fcs|_CC_gated.fcs","", basename(file))
-    df[df[, "file_id"] == i, "sample_name"] <- sample_id
-  }
+  df$batch2 <- sapply(df$file_id, function(id) {
+    stringr::str_match(fcs_files[id], batch_pattern)[,1]
+  })
+  df$sample_name2 <-  sapply(df$file_id, function(id) {
+    gsub(".fcs|_gated.fcs|_CC_gated.fcs","", basename(fcs_files[id]))  })
 
   return(df)
 
