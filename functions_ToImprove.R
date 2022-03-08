@@ -1026,13 +1026,14 @@ fsom_aof <- function(fcs_files,
 
   if(!exists("phenotyping_channels")){
     o <- capture.output(ff_tmp <- flowCore::read.FCS(file.path(files[1])))
-    markers <- FlowSOM::GetMarkers(ff_tmp, colnames(ff_tmp))
+    markers <- FlowSOM::GetMarkers(ff_tmp, flowCore::colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
   }
 
   if(arcsine_transform){
-    trans <- transformList(names(phenotyping_channels), CytoNorm::cytofTransform)
+    trans <- flowCore::transformList(names(phenotyping_channels), 
+                                     CytoNorm::cytofTransform)
   }
   else {
     trans <- NULL
@@ -1076,7 +1077,7 @@ fsom_aof <- function(fcs_files,
   fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, plotFile = NULL, seed = seed, cTotal = 20000,
                                   title = "tSNE visualization of FlowSOM metaclusters")
 
-  figure <- ggarrange(fsomPlot, fsomTsne,
+  figure <- ggpubr::ggarrange(fsomPlot, fsomTsne,
                       # labels = c("FlowSOM clustering", "tsne"),
                       ncol = 2, nrow = 1)
 
@@ -1125,7 +1126,7 @@ scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
     pheatmap::pheatmap(list_scores[[name]],
                        cluster_rows = FALSE,
                        cluster_cols = FALSE,
-                       color = colorRampPalette(brewer.pal(n = 9, name =
+                       color = colorRampPalette(RColorBrewer::brewer.pal(n = 9, name =
                                                              "YlGnBu"))(100),
                        display_numbers = TRUE,
                        labels_col = phenotyping_channels,
@@ -1142,7 +1143,8 @@ scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
     saveRDS(list_scores, file.path(out_dir, "AOF_scores_and_Scaled_AOF_scores.RDS"))
   }
   else {
-    saveRDS(list_scores, file.path(out_dir, paste0(batch, "_AOF_scores_and_Scaled_AOF_scores.RDS")))
+    saveRDS(list_scores, file.path(out_dir, 
+                                   paste0(batch, "_AOF_scores_and_Scaled_AOF_scores.RDS")))
   }
 
   return(df)
@@ -1172,8 +1174,8 @@ aof_scoring <- function(fcs_files,
 
   if(!exists("phenotyping_channels")){
 
-    ff_tmp <- read.FCS(file.path(files[1]))
-    markers <- FlowSOM::GetMarkers(ff_tmp, colnames(ff_tmp))
+    ff_tmp <- flowCore::read.FCS(file.path(files[1]))
+    markers <- FlowSOM::GetMarkers(ff_tmp, flowCore::colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
 
@@ -1240,8 +1242,8 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
 
   df_scores$file_names <- basename(rownames(df_scores))
 
-  scores_median <- median(df_scores$sample_scores)
-  scores_MAD <- mad(df_scores$sample_scores)
+  scores_median <- stats::median(df_scores$sample_scores)
+  scores_MAD <- stats::mad(df_scores$sample_scores)
 
   df_scores$quality <- ifelse(df_scores$sample_scores >
                                 (scores_median + sd * scores_MAD),"bad","good")
@@ -1253,12 +1255,13 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
   max_score <- max(df_scores$sample_scores)
   max_pctgs <- max_score + (max_score * 0.1)
 
-  p <- ggplot2::ggplot(df_scores, aes(x = file_names, y = sample_scores, color = quality)) +
+  p <- ggplot2::ggplot(df_scores, aes(x = file_names, y = sample_scores, 
+                                      color = quality)) +
     geom_point(size = 4) +
     scale_colour_manual(values = colors) +
     ylim(-0.5, max_pctgs) +
-    geom_hline(yintercept = scores_median + sd * scores_MAD,
-               linetype = "dashed", color = "darkgreen", size = 1)+
+    # geom_hline(yintercept = scores_median + sd * scores_MAD,
+    #            linetype = "dashed", color = "darkgreen", size = 1)+
     annotate(geom="text", x = mean(as.numeric(as.factor(df_scores$file_names))),
              y= max_score - 0.05*max_score, label=paste("N bad = ", bad_scores),
              color="red", size = 5) +
@@ -1270,22 +1273,27 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
           axis.line = element_line(colour = "black"),
           legend.position = "none") +
     scale_x_discrete(breaks = df_scores$file_names[df_scores$quality == "bad"])
-  p
-
-  ggplot2::ggsave(filename = "Quality_AOF_score.png", plot = p, path = file.path(out_dir))
+ 
+  if(scores_median + sd * scores_MAD <= max_pctgs){
+    p + geom_hline(yintercept = scores_median + sd * scores_MAD,
+                   linetype = "dashed", color = "darkgreen", size = 1)
+  }
+  
+  ggplot2::ggsave(filename = "Quality_AOF_score.png", plot = p, 
+                  path = file.path(out_dir))
 
   saveRDS(df_scores, file.path(out_dir, "Quality_AOF_score.RDS"))
   write.csv(df_scores, file = file.path(out_dir, "Quality_AOF_score.csv"))
 }
 
-#' file_quality_check
+#' Check the quality of acquired files
 #'
-#' @description wraper function to perform sample quality scoring, it will create
-#' Quality control folder where all the quality plots and files will be stored.
+#' @description Wrapper function to perform sample quality scoring. 
+#' It takes advantage of FlowSOM and AOF algorithms.
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param file_batch_id Character vector, batch label for each fcs_file,
-#'the order needs to be the same as in fcs_files.
+#' the order needs to be the same as in fcs_files.
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to working directory
 #' @param phenotyping_markers Character vector, marker names to be used for
@@ -1303,6 +1311,8 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
 #'
 #' @return plots Quality AOF scores for all files and save .RDS and .csv Quality
 #' scores for further analysis, files are saved in out_dir
+#' 
+#' @importFrom flowCore transformList 
 
 file_quality_check <- function(fcs_files,
                                file_batch_id = NULL,

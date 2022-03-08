@@ -98,16 +98,16 @@ files <- list.files(bead_norm_dir,
                     full.names = TRUE)
 
 # Clean files
-clean_files(files[1], cores = 1,
+clean_files(files, cores = 1,
             out_dir = clean_dir,
-            to_plot = "All",
+            to_plot = "Flagged Only",
             data_type = "MC",
             Segment = 1000,
             arcsine_transform = TRUE,
             non_used_bead_ch = "140")
 
 # ------------------------------------------------------------------------------
-# Files outliers detection -----------------------------------------------------
+# File outliers detection -----------------------------------------------------
 #-------------------------------------------------------------------------------
 
 # Set input directory
