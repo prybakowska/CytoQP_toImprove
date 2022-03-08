@@ -341,8 +341,10 @@ batch <- stringr::str_match(files_after_norm, "day[0-9]*")[,1]
 files_after_norm <- files_after_norm[order(factor(batch))]
 
 # Plot batch effect
+set.seed(789)
 plot_batch(files_before_norm = files_before_norm,
            files_after_norm = files_after_norm,
+           cores = 1,
            out_dir = norm_dir,
            batch_pattern = batch_pattern,
            clustering_markers = c("CD", "IgD", "HLA"),
@@ -459,6 +461,7 @@ files <- list.files(norm_dir,
 batch_pattern <- stringr::str_match(basename(files), ".*(day[0-9]*).*.fcs")[,2]
 
 # Build UMAP on aggregated files
+se.seed(1)
 UMAP_res <- UMAP(fcs_files = files,
                  clustering_markers = c("CD", "HLA", "IgD"),
                  functional_markers = c("IL", "TNF", "TGF", "Gr", "IFNa", "MIP", "MCP1"),
