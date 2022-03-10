@@ -511,6 +511,12 @@ clean_files <- function(files,
 #' @export
 baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                        out_dir = getw(), k = 80, ncells = 25000, ...){
+  
+  # create out_dir if does not exist
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "BeadNorm")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   ff <- FlowSOM::AggregateFlowFrames(fileNames = fcs_files,
                             cTotal = length(fcs_files)*ncells)
@@ -989,9 +995,9 @@ plot_marker_quantiles <- function(files_before_norm,
                  height = length(norm_markers)*4, limitsize = F)
 }
 
-#' fsom_aof
+#' Prepares FlowSOM
 #'
-#' @description Builds FlowSOM tree for the files scoring
+#' @description Builds FlowSOM tree
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param phenotyping_markers Character vector, marker names to be used for clustering,
@@ -1008,37 +1014,57 @@ plot_marker_quantiles <- function(files_before_norm,
 #' Pass to FlowSOM plot name, defult is set to NULL
 #' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5. Default set to TRUE.
-#' @param seed numeric, set to obtain reproducible results, default 654
+#' @param seed numeric, set to obtain reproducible results, default 1
+#' @param transform_list Transformation list to pass to the flowCore 
+#' transform function.
+#' @param my_colors An array specifying colors to be used for the background 
+#' coloring of metaclusters in FlowSOM and t-SNE plot. Must have a length equal 
+#' to the nClus. 
+#' 
+#' @param to_plot Logical, if FlowSOM tree and t-SNE map should be plotted, 
+#' default set to TRUE.  
 #'
 #' @return fsom object
-
+#' 
+#' @export
 fsom_aof <- function(fcs_files,
                      phenotyping_markers,
                      nCells = length(fcs_files)*10000,
                      xdim = 10,
                      ydim = 10,
                      nClus = 10,
-                     out_dir,
+                     out_dir = NULL,
                      batch = NULL,
                      arcsine_transform = TRUE,
-                     seed = 1){
-
-
+                     transform_list = NULL,
+                     my_colors = NULL,
+                     seed = 1, 
+                     to_plot = TRUE){
+  
+  
   if(!exists("phenotyping_channels")){
     o <- capture.output(ff_tmp <- flowCore::read.FCS(file.path(files[1])))
     markers <- FlowSOM::GetMarkers(ff_tmp, flowCore::colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
   }
-
+  
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Quality_Control")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
   if(arcsine_transform){
     trans <- flowCore::transformList(names(phenotyping_channels), 
                                      CytoNorm::cytofTransform)
-  }
+  } 
   else {
-    trans <- NULL
+    if(is.null(transform_list)){
+      stop("transform_list must be defined")
+    }
+    trans <- transform_list
   }
-
+  
   fsom <- CytoNorm::prepareFlowSOM(file = fcs_files,
                                    colsToUse = names(phenotyping_channels),
                                    seed = seed,
@@ -1048,65 +1074,88 @@ fsom_aof <- function(fcs_files,
                                                          ydim = ydim,
                                                          nClus = nClus,
                                                          scale = FALSE))
-
-  myCol <- c("tomato", "violet", "grey50", "slateblue1", "yellow","turquoise2",
-             "yellowgreen", "skyblue", "wheat2","steelblue", "blue2", "navyblue",
-             "orange", "violetred", "red4", "springgreen2",  "palegreen4",
-             "tan", "tan2", "tan3", "brown", "grey70", "grey30")
-
-  if(max(as.numeric(fsom$metaclustering)) > length(myCol)){
-    backgroundColors <- NULL
+  
+  if(to_plot){
+    if(is.null(my_colors)){
+      backgroundColors <- NULL
+    } 
+    else {
+      
+      if(max(as.numeric(fsom$metaclustering)) < length(my_colors)){
+        warning("The number of colors is greater than the number of metaclusters only 
+             needed number of colors will be used")
+        nmcl <- max(as.numeric(fsom$metaclustering))
+        backgroundColors <- my_colors[1:nmcl]
+        
+      }
+      
+      if(max(as.numeric(fsom$metaclustering)) > length(my_colors)){
+        warning("The number of colors is lower than the number of metaclusters 
+              default colors will be used")
+        backgroundColors <- NULL
+        
+      }
+      
+      if(max(as.numeric(fsom$metaclustering)) == length(my_colors)){
+        backgroundColors <- my_colors
+      }
+    }
+    
+    if(!is.null(batch)){
+      filename <- paste0(batch, "_FlowSOM_clustering.pdf")
+    }
+    else {
+      filename <- "FlowSOM_clustering.pdf"
+    }
+    
+    fsomPlot <- FlowSOM::PlotStars(fsom = fsom,
+                                   title = "FlowSOM clustering",
+                                   backgroundValues = fsom$metaclustering,
+                                   maxNodeSize = 3,
+                                   backgroundColors = backgroundColors)
+    fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, plotFile = NULL, seed = seed, cTotal = 20000,
+                                    title = "tSNE visualization of FlowSOM metaclusters")
+    
+    figure <- ggpubr::ggarrange(fsomPlot, fsomTsne,
+                                # labels = c("FlowSOM clustering", "tsne"),
+                                ncol = 2, nrow = 1)
+    
+    ggplot2::ggsave(filename = filename, plot = figure, device = "pdf", path = out_dir,
+                    width =24, height = 10)
   }
-  else {
-    backgroundColors <- myCol
-  }
-
-  if(!is.null(batch)){
-    filename <- paste0(batch, "_FlowSOM_clustering.pdf")
-  }
-  else {
-    filename <- "FlowSOM_clustering.pdf"
-  }
-
-  # pdf(file.path(out_dir, filename), width = 14, height = 10)
-  fsomPlot <- FlowSOM::PlotStars(fsom = fsom,
-                                 title = "FlowSOM clustering",
-                                 backgroundValues = fsom$metaclustering,
-                                 maxNodeSize = 3,
-                                 backgroundColors = backgroundColors)
-  fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, plotFile = NULL, seed = seed, cTotal = 20000,
-                                  title = "tSNE visualization of FlowSOM metaclusters")
-
-  figure <- ggpubr::ggarrange(fsomPlot, fsomTsne,
-                      # labels = c("FlowSOM clustering", "tsne"),
-                      ncol = 2, nrow = 1)
-
-  ggplot2::ggsave(filename = filename, plot = figure, device = "pdf", path = out_dir,
-         width =24, height = 10)
-  # dev.off()
 
   return(fsom)
 }
 
-#' scaled_aof_score
+#' Calculates scaled aof scores
 #'
-#' @description Calculates scaled AOF and sample quality AOF scores
-#'
+#' @description Calculates scaled AOF scores and sample quality score. 
+#' Additionally plots heatmaps for both raw  aof scores and scaled aof scores. 
 #' @param aof_scores Matrix, array, Aof scores obtained using function
-#' greedyCytometryAof from cytutils package
-#' @param out_dir Character, pathway to where the FlowSOM clustering plot should
-#' @param aof_channels Character, channels or markers for which aof was calculated
-#' @param batch Character, aqusition batch for each fcs file.
-#' Pass to FlowSOM plot name, defult is set to NULL
+#' cytutils::greedyCytometryAof.
+#' @param out_dir Character, pathway to where the plots and scores should be 
+#' saved, if NULL file.path(getwd(), "Quality_Control) will be used.
+#' @param aof_channels Character vector with the markers and their corresponding 
+#' channel names used for aof_scoring. Used only for plotting markers instead
+#' of channels. If NULL (default) the colnames(aof_scores) will be used.  
+#' @param batch Character, acquisition batch for each fcs file.
+#' Pass to FlowSOM plot name, default is set to NULL
 #' be saved, default is set to working directory.
 #'
-#' @return returns data frame with the scaled AOF scores
-
-scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
-  phenotyping_channels <- aof_channels
+#' @return Returns data frame with sample scores.Saved heatmaps and data frames
+#' for AOF scores and AOF scaled scores. 
+#' 
+#' @export
+scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL, 
+                             batch = NULL){
   aof_scores_scaled <- scale(aof_scores)
   aof_scores_scaled <- pmax(aof_scores_scaled, 0)^2
   sample_scores <- apply(aof_scores_scaled, 1, sum, na.rm = TRUE)
+  
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Quality_Control")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   df <- as.data.frame(sample_scores)
 
@@ -1122,12 +1171,25 @@ scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
       filename <- file.path(out_dir, paste0(name, ".pdf"))
       main <- name
     }
+    
+    if(is.null(aof_channels)){
+      phenotyping_channels <- colnames(list_scores[[name]])
+    }
+    else if (all(colnames(aof_scores) %in% names(aof_channels))){
+      
+      phenotyping_channels <- aof_channels[colnames(aof_scores)]
+    } else {
+      phenotyping_channels <- colnames(list_scores[[name]])
+      warning("aof_channels do not correspond to the channels selected for 
+              AOF scoring, colnames from aof_scores will be used for plotting")
+    }
 
     pheatmap::pheatmap(list_scores[[name]],
                        cluster_rows = FALSE,
                        cluster_cols = FALSE,
-                       color = colorRampPalette(RColorBrewer::brewer.pal(n = 9, name =
-                                                             "YlGnBu"))(100),
+                       color = colorRampPalette(
+                         RColorBrewer::brewer.pal(n = 9, 
+                                                  name = "YlGnBu"))(100),
                        display_numbers = TRUE,
                        labels_col = phenotyping_channels,
                        labels_row = basename(rownames(list_scores[[name]])),
@@ -1146,32 +1208,38 @@ scaled_aof_score <- function(aof_scores, out_dir, aof_channels, batch = NULL){
     saveRDS(list_scores, file.path(out_dir, 
                                    paste0(batch, "_AOF_scores_and_Scaled_AOF_scores.RDS")))
   }
-
   return(df)
 }
 
-#' aof_scoring
+#' Calculates AOF scores and scaled AOF scores
 #'
-#' @description Calculates AOF (Average Overlap Frequency) scores
+#' @description  Calculates AOF (Average Overlap Frequency) scores using flowSOM
+#' object and greedy algorithm from cytutils package. 
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param phenotyping_markers Character vector, marker names to be used for
 #' clustering, can be full marker name e.g. "CD45" or "CD" if all CD-markers
-#' needs to be plotted
+#' needs to be plotted.
 #' @param fsom FlowSOM object as generated by fsom_aof
 #' @param out_dir Character, pathway to where the AOF scores and plots should
-#' be saved, default is set to working directory.
-#' @param batch Character, aqusition batch for each fcs file.
-#' Pass to AOF plot names, defult is set to NULL
+#' be saved, default is set to file.path(getwd(), "Quality_Control")
+#' @param batch Character, acquisition batch for each fcs file.
+#' This argument is passed to AOF plot names, default is set to NULL.
 #'
-#' @return returns data frame with the scaled AOF scores
-
+#' @return Returns data frame with the scaled AOF scores and heatmap plots
+#' representing AOF scores and scaled AOF scores. 
+#' 
+#' @export
 aof_scoring <- function(fcs_files,
                         phenotyping_markers,
                         fsom,
-                        out_dir,
+                        out_dir = NULL,
                         batch = NULL){
-
+  
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Quality_Control")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
   if(!exists("phenotyping_channels")){
 
     ff_tmp <- flowCore::read.FCS(file.path(files[1]))
@@ -1211,28 +1279,35 @@ aof_scoring <- function(fcs_files,
                    batch = batch)
 }
 
-#' file_outlier_detecion
+#' Detects outliers based on sample quality scores
 #'
-#' @description Detects outlier files based on sample AOF score, generates plot
-#' for outlier and .csv file which indicates which fcs files could be discarded
-#' from further analysis
+#' @description Detects outlier files based on sample quality scores,
+#' generates plot for outlier and .csv file which indicates which fcs files
+#' could be discarded from further analysis.
 #'
-#' @param scores list of scaled scores per aqusition batch or data frame of scaled scores,
-#' both generated by scaled_aof_score or aof_scoring function
-#' @param out_dir Character, pathway to where the plot and .csv files with files
-#' quality scores should be saved, default is set to getwd().
-#' @param sd how many standard deviation should be use to detect outliers
-#' only if argument to_plot = TRUE, default is set to working directory
+#' @param scores List of scaled scores per acquisition batch or data frame 
+#' of scaled scores, both generated by scaled_aof_score or aof_scoring function
+#' @param out_dir Character, pathway to where the plot and .csv files with
+#' quality scores should be saved, default is set to NULL, thus 
+#' file.path(getwd(), "Quality_Control" will be generated.
+#' @param sd How many standard deviation should be use to detect outliers
+#' default is set to 3.
 #'
-#' @return plots Quality AOF scores for all files and save .RDS and .csv Quality
-#' scores for further analysis, files are saved in out_dir
-
-file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
+#' @return Save .RDS and .csv Quality scores for further analysis, and 
+#' plots and save .png for Quality AOF scores for all files.
+#'
+#' @export 
+file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
 
   if(!inherits(scores, "data.frame") & !inherits(scores, "list")){
     stop("df scores are neither data frame nor list of the data frames")
   }
 
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Quality_Control")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
   if(inherits(scores, "list")){
     df_scores <- do.call(rbind, scores)
   }
@@ -1260,8 +1335,6 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
     geom_point(size = 4) +
     scale_colour_manual(values = colors) +
     ylim(-0.5, max_pctgs) +
-    # geom_hline(yintercept = scores_median + sd * scores_MAD,
-    #            linetype = "dashed", color = "darkgreen", size = 1)+
     annotate(geom="text", x = mean(as.numeric(as.factor(df_scores$file_names))),
              y= max_score - 0.05*max_score, label=paste("N bad = ", bad_scores),
              color="red", size = 5) +
@@ -1288,42 +1361,54 @@ file_outlier_detecion <- function(scores, out_dir = getwd(), sd) {
 
 #' Check the quality of acquired files
 #'
-#' @description Wrapper function to perform sample quality scoring. 
-#' It takes advantage of FlowSOM and AOF algorithms.
+#' @description Wrapper function to perform sample quality scoring.
+#' First, it clusters the data per each batch (if batch argument is defined) and
+#' calculates the AOF scores and Quality scores per batch using AOF algorithm.
+#' Next, based on Quality scores, it detects outliers across all the files,
+#' regarding the batch.
 #'
-#' @param fcs_files Character, full path to fcs_files.
+#' @param fcs_files Character, full path to fcs files.
 #' @param file_batch_id Character vector, batch label for each fcs_file,
 #' the order needs to be the same as in fcs_files.
 #' @param out_dir Character, pathway to where the plots should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory
+#' default is set to NULL, which means that the following path will be created
+#' file.path(getwd(), "Quality_Control").
 #' @param phenotyping_markers Character vector, marker names to be used for
-#' flowsom clustering including DNA marker Iridium and viability staining if available,
-#' can be full marker name e.g. "CD45" or pattern "CD" if
-#' all CD-markers needs to be plotted, default is set to NULL, so all the mass
-#' channels will be used
+#' flowsom clustering including DNA marker Iridium and viability staining
+#' if available. Can be full marker name e.g. "CD45" or pattern "CD" if
+#' all CD-markers needs to be plotted. Default is set to NULL, thus all the mass
+#' channels will be used.
 #' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5.
-#' @param sd numeric, number of standard deviation allowed for file outlier
+#' arcsine transformation and cofactor 5. Default is set to TRUE.
+#' If FALSE, the transform list to pass to the flowCore transform function must
+#' be defined and pass as an additional argument to fsom_aof function.
+#' @param sd Numeric, number of standard deviation allowed for file outlier
 #' detection, default = 3.
-#' @param nClus numeric, as in FlowSOM, numer of metaclusters to be obtained
-#' @param ... arguments to be passed to fsom_aof function for FlowSOM parameter
-#' adjustment
+#' @param nClus Numeric, as in FlowSOM, number of metaclusters to be obtained
+#' @param ... Arguments to be passed to fsom_aof function for FlowSOM parameter
+#' adjustment and plotting: xdim, ydim, transform_list, my_colors, seed, to_plot.
 #'
-#' @return plots Quality AOF scores for all files and save .RDS and .csv Quality
-#' scores for further analysis, files are saved in out_dir
+#' @return Plots Quality AOF scores for all files and save .RDS and .csv Quality
+#' scores for further analysis, files are saved in out_dir.
+#'
+#' @importFrom flowCore transformList
+#' @import ggplot2
 #' 
-#' @importFrom flowCore transformList 
-
+#' @export
 file_quality_check <- function(fcs_files,
                                file_batch_id = NULL,
-                               out_dir = getwd(),
+                               out_dir = NULL,
                                phenotyping_markers = NULL,
                                arcsine_transform = TRUE,
                                sd = 3,
                                nClus = 10,
                                ...){
 
-  if(!dir.exists(out_dir)) dir.create(out_dir)
+  # create out_dir if does not exist
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Quality_Control")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   if (!is.null(file_batch_id)) {
     scores <- lapply(unique(file_batch_id), function(batch) {
@@ -1354,8 +1439,8 @@ file_quality_check <- function(fcs_files,
                           fsom = fsom, out_dir = out_dir, batch = NULL)
   }
 
-  final_score <- file_outlier_detecion(scores = scores, out_dir = out_dir,
-                                       sd = sd)
+  file_outlier_detecion(scores = scores, out_dir = out_dir,
+                        sd = sd)
 }
 
 #' debarcode_files

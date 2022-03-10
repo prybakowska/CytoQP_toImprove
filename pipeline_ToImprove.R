@@ -122,12 +122,8 @@ files <- list.files(clean_dir,
 file_batch_id <- stringr::str_match(basename(files),
                                     "(day[0-9]*).*.fcs")[,2]
 
-# Define out_dir for diagnostic plots
-quality_dir <- file.path(dir, "Quality_control")
-
 file_quality_check(fcs_files = files,
                    file_batch_id = file_batch_id,
-                   out_dir = quality_dir,
                    phenotyping_markers = c("Ir","CD", "HLA", "IgD", "Pt"),
                    arcsine_transform = TRUE,
                    nClus = 10,
