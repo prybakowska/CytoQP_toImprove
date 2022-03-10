@@ -29,7 +29,7 @@ find_mass_ch <- function(flow_frame,
 #' @param timestep
 #'
 #' @return timeFlowData, the cell assignment to the bins.
-#' 
+#'
 #' @references this code is strongly based on flowAI::flow_rate_bin.
 .flow_rate_bin_adapted <- function (x, second_fraction = 0.1, timeCh = timeCh, timestep = timestep)
 {
@@ -60,7 +60,7 @@ find_mass_ch <- function(flow_frame,
   timeFlowData <- list(frequencies = cbind(tbins, minbin,
                                            secbin, tbCounts),
                        cellBinID = data.frame(cellID = idx,
-                                              binID = binID), 
+                                              binID = binID),
                        info = data.frame(second_fraction = second_fraction,
                                          expFrequency = expEv, bins = nrBins))
   return(timeFlowData)
@@ -140,10 +140,10 @@ find_mass_ch <- function(flow_frame,
 #' @param FlowRateQC list obtained using flowAI:::flow_rate_check function
 #'
 #' @return xgraph plot
-#' 
+#'
 #' @references this code is adapted from the flowAI:::flow_rate_plot()
-#' Monaco, G., Chen, H., Poidinger, M., Chen, J., de Magalhães, J.P., 
-#' and Larbi, A. (2016). flowAI: automatic and interactive anomaly discerning 
+#' Monaco, G., Chen, H., Poidinger, M., Chen, J., de Magalhães, J.P.,
+#' and Larbi, A. (2016). flowAI: automatic and interactive anomaly discerning
 #' tools for flow cytometry data. Bioinformatics 32, 2473–2480.
 .plot_flowrate <- function (FlowRateQC, data_type = "MC")
 {
@@ -288,7 +288,7 @@ find_mass_ch <- function(flow_frame,
   # read fcs file
   ff <- flowCore::read.FCS(filename = file,
                            transformation = FALSE)
-  
+
   if(clean_flow_rate){
     # clean flow rate
     message("cleaning flowrate for ", basename(file))
@@ -310,8 +310,8 @@ find_mass_ch <- function(flow_frame,
                             data_type = data_type,
                             non_used_bead_ch = non_used_bead_ch)
   }
-  
- 
+
+
 
   # Write FCS files
   flowCore::write.FCS(ff,
@@ -363,7 +363,7 @@ find_mass_ch <- function(flow_frame,
 #' with prefix "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir
 #' if parameter to_plot set to "All" or "Flagged Only".
 #' 
-#' #' @examples 
+#' @examples 
 #' # Set and create the directory where cleaned fcs files will be saved
 #'clean_dir <- file.path(dir, "Cleaned")
 #'
@@ -410,11 +410,11 @@ clean_files <- function(files,
   if (any(!is(cores, "numeric") | cores < 1)){
     stop("cores must be a positive number")
   }
-  
+
   if(!is(clean_flow_rate, "logical")){
     stop("clean_flow_rate must be logical")
   }
-  
+
   if(!is(clean_signal, "logical")){
     stop("clean_signal must be logical")
   }
@@ -424,48 +424,25 @@ clean_files <- function(files,
     out_dir <- file.path(getwd(), "Cleaned")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir, recursive = TRUE)}
-  
-  
-  # Analysis with a single core
-  if (cores == 1) {
-    lapply(files, function(x) {
-      .save_bead_clean(x,
-                       to_plot = to_plot,
-                       clean_flow_rate = clean_flow_rate,
-                       clean_signal = clean_signal,
-                       out_dir = out_dir,
-                       alpha = alpha,
-                       data_type = data_type,
-                       channels_to_clean = channels_to_clean,
-                       Segment = Segment,
-                       arcsine_transform = arcsine_transform,
-                       non_used_bead_ch = non_used_bead_ch,
-                       MaxPercCut = MaxPercCut,
-                       UseOnlyWorstChannels = UseOnlyWorstChannels,
-                       AllowFlaggedRerun = AllowFlaggedRerun,
-                       AlwaysClean = AlwaysClean)})
-  }
 
   # Parallelized analysis
-  else {
-    BiocParallel::bplapply(files, function(x) {
-      .save_bead_clean(x,
-                       to_plot = to_plot,
-                       clean_flow_rate = clean_flow_rate,
-                       clean_signal = clean_signal,
-                       out_dir = out_dir,
-                       alpha = alpha,
-                       data_type = data_type,
-                       channels_to_clean = channels_to_clean,
-                       Segment = Segment,
-                       arcsine_transform = arcsine_transform,
-                       non_used_bead_ch = non_used_bead_ch,
-                       MaxPercCut = MaxPercCut,
-                       UseOnlyWorstChannels = UseOnlyWorstChannels,
-                       AllowFlaggedRerun = AllowFlaggedRerun,
-                       AlwaysClean = AlwaysClean)},
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-  }
+  BiocParallel::bplapply(files, function(x) {
+    .save_bead_clean(x,
+                     to_plot = to_plot,
+                     clean_flow_rate = clean_flow_rate,
+                     clean_signal = clean_signal,
+                     out_dir = out_dir,
+                     alpha = alpha,
+                     data_type = data_type,
+                     channels_to_clean = channels_to_clean,
+                     Segment = Segment,
+                     arcsine_transform = arcsine_transform,
+                     non_used_bead_ch = non_used_bead_ch,
+                     MaxPercCut = MaxPercCut,
+                     UseOnlyWorstChannels = UseOnlyWorstChannels,
+                     AllowFlaggedRerun = AllowFlaggedRerun,
+                     AlwaysClean = AlwaysClean)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
 }
 
@@ -508,6 +485,7 @@ clean_files <- function(files,
 #' ref_sample <- baseline_file(fcs_files = files,
 #'                             beads = "dvs",
 #'                             out_dir = bead_norm_dir)
+#'                             
 #' @export
 baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                        out_dir = getw(), k = 80, ncells = 25000, ...){
@@ -566,7 +544,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                            ...){
 
   if (!is.null(markers_to_keep)){
-   
+
     matches <- paste(markers_to_keep, collapse="|")
 
     m_to_keep <- grep(matches, FlowSOM::GetMarkers(flow_frame, flowCore::colnames(flow_frame)),
@@ -577,15 +555,15 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                         |Residual|Pd",
                           flowCore::colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
-      
+
     } else {
       matches_ch <- paste(c(non_mass_channel, "Time", "length"), collapse="|")
       non_mass_ch <- grep(matches_ch,
                           flowCore::colnames(flow_frame),
                           ignore.case = TRUE, value = FALSE)
-     
+
     }
-    
+
 
     channels_to_keep <- c(m_to_keep, non_mass_ch)
     channels_to_keep <- flowCore::colnames(flow_frame)[sort(unique(channels_to_keep))]
@@ -680,41 +658,41 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 }
 #' Bead-based normalization
 #'
-#' @description Performs bead-based normalization using beads spiked in 
+#' @description Performs bead-based normalization using beads spiked in
 #' the sample. It is based on functions from CATALYST package.
 #'
 #' @param files Character vector or list with the paths of the raw files.
 #' @param cores Number of cores to be used. Works only for not-Widows users.
 #' @param markers_to_keep Character vector, marker names to be kept after
-#' the normalization, can be full marker name e.g. "CD45" or "CD". 
-#' If NULL (default) all markers will be normalized and kept in flowframe. 
+#' the normalization, can be full marker name e.g. "CD45" or "CD".
+#' If NULL (default) all markers will be normalized and kept in flowframe.
 #' Selection of the markers will reduce file volume and speedup the analysis.
-#' Non-mass channels like Time, Event_length, Gaussian parameters and in addition 
+#' Non-mass channels like Time, Event_length, Gaussian parameters and in addition
 #' palladium barcoding channels are kept if non_mass_ch set to NULL.
-#' @param non_mass_channel Character vector, non-mass channels to keep for 
-#' further analysis. Can be full channel name like Eu151Di or 151. 
-#' By default "Time" and "event_length" will be always kept in the flow frame. 
-#' @param beads Character, as in CATALYST::normCytof, "dvs" 
+#' @param non_mass_channel Character vector, non-mass channels to keep for
+#' further analysis. Can be full channel name like Eu151Di or 151.
+#' By default "Time" and "event_length" will be always kept in the flow frame.
+#' @param beads Character, as in CATALYST::normCytof, "dvs"
 #' (for bead masses 140, 151, 153 ,165, 175)
-#' or "beta" (for bead masses 139, 141, 159, 169, 175) 
+#' or "beta" (for bead masses 139, 141, 159, 169, 175)
 #' or a numeric vector of masses. Default is set to "dvs".
-#' @param norm_to_ref flow frame, created by baseline_file function to which 
+#' @param norm_to_ref flow frame, created by baseline_file function to which
 #' input data will be normalized, default is set to NULL.
 #' @param to_plot Logical if to plot bead gate and bead normalization lines
 #' for each file.Defaults is set to TRUE.
-#' @param out_dir Character, pathway to where the bead normalized fcs files 
-#' and plots should be saved, for plots only if argument to_plot = TRUE, 
+#' @param out_dir Character, pathway to where the bead normalized fcs files
+#' and plots should be saved, for plots only if argument to_plot = TRUE,
 #' default is set to file.path(getwd(), BeadNorm).
 #' @param k The same as in CATALYST::normCytof, integer width of the
 #' median window used for bead smoothing (affects visualizations only).
-#' @param remove_beads Logical, as in CATALYST::normCytof if beads should be 
-#' removed from fcs files. Default set to TRUE. Note, should be set to FALSE if 
-#' none of the channels is beads-specific. 
+#' @param remove_beads Logical, as in CATALYST::normCytof if beads should be
+#' removed from fcs files. Default set to TRUE. Note, should be set to FALSE if
+#' none of the channels is beads-specific.
 #' @param ... Additional arguments to pass to normCytof.
 #'
 #' @return Save bead-normalized fcs files and plots to out_dir.
-#' 
-#' @examples 
+#'
+#' @examples
 #' # set input directory (pathway to the files that are going to be normalized)
 #' raw_data_dir <- file.path(dir, "RawFiles")
 #'
@@ -744,7 +722,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
 #'                                  "Viability","IL", "IFNa",
 #'                                    "TNF", "TGF", "MIP", "MCP", "Granz"))
 #'
-#' @export  
+#' @export
 bead_normalize <- function(files,
                            cores = 1,
                            markers_to_keep = NULL,
@@ -764,37 +742,21 @@ bead_normalize <- function(files,
   if (any(!is(cores, "numeric") | cores < 1)){
     stop("cores must be a positive number")
   }
-  
-  
 
-  # Analysis with a single core
-  if (cores == 1) {
-    lapply(files, function(x) {
-      .save_bead_normalize(x,
-                           markers_to_keep,
-                           beads,
-                           non_mass_channel,
-                           norm_to_ref,
-                           remove_beads,
-                           to_plot,
-                           out_dir,
-                           k)})
-  }
+
 
   # Parallelized analysis
-  else {
-    BiocParallel::bplapply(files, function(x) {
-      .save_bead_normalize(x,
-                           markers_to_keep,
-                           non_mass_channel,
-                           beads,
-                           norm_to_ref,
-                           remove_beads,
-                           to_plot,
-                           out_dir,
-                           k)},
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-  }
+  BiocParallel::bplapply(files, function(x) {
+    .save_bead_normalize(x,
+                         markers_to_keep,
+                         non_mass_channel,
+                         beads,
+                         norm_to_ref,
+                         remove_beads,
+                         to_plot,
+                         out_dir,
+                         k)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
 }
 
@@ -1665,6 +1627,8 @@ debarcode_files <- function(fcs_files,
 #'
 aggregate_files <- function(fcs_files,
                             md,
+                            barcode_column,
+                            batch_column,
                             cores = 1,
                             channels_to_keep = NULL,
                             outputFile = "aggregate.fcs",
@@ -1682,49 +1646,28 @@ aggregate_files <- function(fcs_files,
   }
 
 
-  # Analysis with a single core
-  if (cores == 1) {
-    lapply(seq_len(nrow(md)), function(i) {
-      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
-
-      files_to_agg <- grep(pattern = patterns[2],
-                           grep(pattern = patterns[1],
-                                fcs_files, value = TRUE),
-                           value = TRUE)
-
-      print(paste0("Creating ", md[[i, "fcs_new_name"]]))
-
-      .aggregate_ind(fcs_files = files_to_agg,
-                     channels_to_keep = channels_to_keep,
-                     outputFile = outputFile,
-                     maxcells = maxcells,
-                     write_agg_file = write_agg_file,
-                     out_dir = out_dir)
-    }
-    )
-  }
-
   # Parallelized analysis
-  else {
-    BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
-      patterns <- as.character(md[i, c("barcode_name", "BATCH")])
+  BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
+    patterns <- as.character(md[i, c(barcode_column, batch_column)])
 
-      files_to_agg <- grep(pattern = patterns[2],
-                           grep(pattern = patterns[1],
-                                fcs_files, value = TRUE),
-                           value = TRUE)
+    files_to_agg <- grep(pattern = patterns[2],
+                         grep(pattern = patterns[1],
+                              fcs_files, value = TRUE),
+                         value = TRUE)
 
-      print(paste0("Creating ", md[[i, "fcs_new_name"]]))
+    print(paste0("Creating ", md[[i, "fcs_new_name"]]))
 
-      .aggregate_ind(fcs_files = files_to_agg,
-                     channels_to_keep = channels_to_keep,
-                     outputFile = outputFile,
-                     maxcells = maxcells,
-                     write_agg_file = write_agg_file,
-                     out_dir = out_dir)
-    },
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-  }
+    outputFile = md[[i, "fcs_new_name"]]
+
+    .aggregate_ind(fcs_files = files_to_agg,
+                   channels_to_keep = channels_to_keep,
+                   outputFile = outputFile,
+                   maxcells = maxcells,
+                   write_agg_file = write_agg_file,
+                   out_dir = out_dir)
+  },
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+
 
 
 }
@@ -2040,14 +1983,7 @@ gate_live_cells <- function(flow_frame,
                             n_plots = 3,
                             gate_dir = gate_dir){
 
-  n_plots <- 3
 
-  png(file.path(gate_dir, paste0("gating.png")),
-      width = n_plots * 300,
-      height = length(files) * 300)
-  layout(matrix(1:(length(files) * n_plots),
-                ncol = n_plots,
-                byrow = TRUE))
 
   ff <- flowCore::read.FCS(filename = file,
                            transformation = FALSE)
@@ -2064,8 +2000,6 @@ gate_live_cells <- function(flow_frame,
 
   flowCore::write.FCS(ff, file.path(gate_dir,
                                     gsub(".fcs", "_gated.fcs", basename(file))))
-
-  dev.off()
 
 }
 
@@ -2087,21 +2021,101 @@ gate_files <- function(files,
     dir.create(gate_dir)
   }
 
-  # Analysis with a single core
-  if (cores == 1) {
-    lapply(files, function(x) {
-      .save_bead_gate(x,
-                      gate_dir = gate_dir)})
-  }
+  png(file.path(gate_dir, paste0("gating.png")),
+      width = n_plots * 300,
+      height = length(files) * 300)
+  layout(matrix(1:(length(files) * n_plots),
+                ncol = n_plots,
+                byrow = TRUE))
+
 
   # Parallelized analysis
-  else {
-    BiocParallel::bplapply(files, function(x) {
-      .save_bead_gate(x,
-                      n_plots = n_plots,
-                      gate_dir = gate_dir)},
-      BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+  BiocParallel::bplapply(files, function(x) {
+    .save_bead_gate(x,
+                    n_plots = 3,
+                    gate_dir = gate_dir)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+
+  dev.off()
+
+}
+
+.plot_batch_ind <- function(name,
+                            files,
+                            arcsine_transform,
+                            clustering_markers,
+                            batch_pattern,
+                            manual_colors,
+                            cells_total,
+                            out_dir) {
+
+  ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = files,
+                                         cTotal = length(files) * cells_total,
+                                         verbose = TRUE,
+                                         writeMeta = FALSE,
+                                         writeOutput = FALSE,
+                                         outputFile = file.path(out_dir, paste0("aggregated_for_batch_plotting.fcs")))
+
+  if (arcsine_transform == TRUE){
+    ff_agg <- flowCore::transform(ff_agg,
+                                  transformList(grep("Di", colnames(ff_agg), value = TRUE),
+                                                cytofTransform))
   }
+
+  markers <- FlowSOM::GetMarkers(ff_agg, colnames(ff_agg))
+
+  cl_markers <- paste(clustering_markers, collapse="|")
+  cl_markers <- grep(cl_markers, markers, value = T)
+
+  ff_agg@exprs[, names(cl_markers)] <- apply(ff_agg@exprs[, names(cl_markers)],
+                                             2, function(x){
+                                               q <- quantile(x, 0.9999)
+                                               x[x > q] <- q
+                                               x
+                                             })
+
+  samp <- length(files_list[[name]])
+  ff_samp <- ff_agg@exprs[sample(nrow(ff_agg@exprs), samp*cells_total), ]
+
+  dimred_res <- uwot::umap(X = ff_samp[, names(cl_markers)],
+                           n_neighbors = 15, scale = TRUE)
+
+  dimred_df <- data.frame(dim1 = dimred_res[,1], dim2= dimred_res[,2],
+                          ff_samp[, names(cl_markers)])
+
+  dimred_df$file_id <- ff_samp[,"File2"]
+
+  dimred_df$batch <- sapply(files[dimred_df$file_id], function(file) {
+    stringr::str_match(file, batch_pattern)[,1]})
+
+  p <- ggplot2::ggplot(dimred_df,  aes_string(x = "dim1", y = "dim2", color = "batch")) +
+    geom_point(aes(color = batch), size = 3, position="jitter") +
+    ggtitle(name)+
+    guides(color = guide_legend(override.aes = list(size = 5)))+
+    theme(panel.background = element_rect(fill = "white", colour = "black",
+                                          size = 2, linetype = "solid"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.subtitle = element_text(color="black", size=26,
+                                       hjust = 0.95, face = "bold"),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          strip.text.x = element_text(size = 23, color = "black"),
+          strip.background = element_rect(fill = "white"),
+          legend.text = element_text(size = 18),
+          legend.title = element_text(size = 22),
+          legend.position = "bottom",
+          # legend.key.size = unit(3,"point"),
+          legend.key = element_blank())
+
+  if (!is.null(manual_colors)){
+    p <- p+scale_color_manual(values = manual_colors)
+  }
+
+  return(p)
+
+
 }
 
 #' plot_batch
@@ -2110,6 +2124,7 @@ gate_files <- function(files,
 #'
 #' @param files_before_norm Character, full path to the unnormalized fcs_files.
 #' @param files_after_norm Character, full path to the normalized fcs_files.
+#' @param cores Number of cores to be used
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to working directory.
 #' @param clustering_markers Character vector, marker names to be used for clustering,
@@ -2128,95 +2143,30 @@ gate_files <- function(files,
 
 plot_batch <- function(files_before_norm ,
                        files_after_norm,
+                       cores = 1,
                        out_dir = getwd(),
                        clustering_markers = "CD|HLA|IgD|PD|BAFF|TCR",
                        arcsine_transform = TRUE,
                        batch_pattern = "RUN[0-9]*",
                        manual_colors = NULL,
-                       cells_total = 1000,
-                       seed = 789){
+                       cells_total = 1000){
 
   files_list <- list("files_before_norm" = files_before_norm,
                      "files_after_norm" = files_after_norm)
 
-  plots <- list()
-  for (name in names(files_list)) {
+  # Parallelized analysis
+  plots <- BiocParallel::bplapply(names(files_list), function(x) {
+    .plot_batch_ind(x,
+                    file = files_list[[x]],
+                    out_dir = out_dir,
+                    clustering_markers = clustering_markers,
+                    arcsine_transform = arcsine_transform,
+                    batch_pattern = batch_pattern,
+                    manual_colors = manual_colors,
+                    cells_total = cells_total)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
-    set.seed(seed)
-    ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = files_list[[name]],
-                                           cTotal = length(files_list[[name]]) * cells_total,
-                                           verbose = TRUE,
-                                           writeMeta = FALSE,
-                                           writeOutput = FALSE,
-                                           outputFile = file.path(out_dir, paste0("aggregated_for_batch_plotting.fcs")))
 
-    if (arcsine_transform == TRUE){
-      ff_agg <- flowCore::transform(ff_agg,
-                                    transformList(grep("Di", colnames(ff_agg), value = TRUE),
-                                                  cytofTransform))
-    }
-
-    markers <- FlowSOM::GetMarkers(ff_agg, colnames(ff_agg))
-
-    cl_markers <- paste(clustering_markers, collapse="|")
-    cl_markers <- grep(cl_markers, markers, value = T)
-
-    ff_agg@exprs[, names(cl_markers)] <- apply(ff_agg@exprs[, names(cl_markers)],
-                                               2, function(x){
-      q <- quantile(x, 0.9999)
-      x[x > q] <- q
-      x
-    })
-
-    set.seed(seed)
-    samp <- length(files_list[[name]])
-    ff_samp <- ff_agg@exprs[sample(nrow(ff_agg@exprs), samp*cells_total), ]
-
-    set.seed(seed)
-    dimred_res <- uwot::umap(X = ff_samp[, names(cl_markers)],
-                             n_neighbors = 15, scale = TRUE)
-
-    dimred_df <- data.frame(dim1 = dimred_res[,1], dim2= dimred_res[,2],
-                            ff_samp[, names(cl_markers)])
-
-    dimred_df$file_id <- ff_samp[,"File2"]
-    dimred_df$batch <- NA
-
-    for (i in 1:length(files_list[[name]])){
-
-      file <- files_list[[name]][i]
-      batch <- stringr::str_match(file, batch_pattern)[,1]
-      dimred_df[dimred_df[, "file_id"] == i, "batch"] <- batch
-    }
-
-    p <- ggplot2::ggplot(dimred_df,  aes_string(x = "dim1", y = "dim2", color = "batch")) +
-      geom_point(aes(color = batch), size = 3, position="jitter") +
-      ggtitle(name)+
-      guides(color = guide_legend(override.aes = list(size = 5)))+
-      theme(panel.background = element_rect(fill = "white", colour = "black",
-                                            size = 2, linetype = "solid"),
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            plot.subtitle = element_text(color="black", size=26,
-                                         hjust = 0.95, face = "bold"),
-            axis.text = element_blank(),
-            axis.title = element_blank(),
-            axis.ticks = element_blank(),
-            strip.text.x = element_text(size = 23, color = "black"),
-            strip.background = element_rect(fill = "white"),
-            legend.text = element_text(size = 18),
-            legend.title = element_text(size = 22),
-            legend.position = "bottom",
-            # legend.key.size = unit(3,"point"),
-            legend.key = element_blank())
-
-    if (!is.null(manual_colors)){
-      p <- p+scale_color_manual(values = manual_colors)
-    }
-
-    plots[[name]] <- p
-
-  }
 
   png(file.path(norm_dir, "batch_effect.png"),
       width = length(plots)*1500,
@@ -2240,7 +2190,6 @@ plot_batch <- function(files_before_norm ,
 #' @return data frame for plotting
 prepare_data_for_plotting <- function(frequency_msi_list,
                                       matrix_type,
-                                      seed = 654,
                                       n_neighbours = 14){
   print(matrix_type)
 
@@ -2257,7 +2206,6 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   }
 
   # build UMAP for files before the normalization
-  set.seed(seed)
   df_b_umap <- data.frame(umap(df_b, n_neighbors = n, scale = T))
 
   # process files after normalization
@@ -2270,7 +2218,6 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   }
 
   # build UMAP for files after the normalization
-  set.seed(seed)
   df_a_umap <- data.frame(umap(df_a, n_neighbors = n, scale = T))
 
   # extract rownames to use the for ggplot annotation
@@ -2308,10 +2255,12 @@ UMAP <- function(fcs_files,
                  out_dir = getwd(),
                  batch_pattern = "day[0-9]*",
                  arcsine_transform = TRUE,
-                 cells_total = 1000,
-                 seed = 1){
+                 cells_total = 1000){
 
-  set.seed(seed)
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
+
   ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = fcs_files,
                                          cTotal = length(fcs_files) * cells_total,
                                          verbose = TRUE,
@@ -2337,7 +2286,6 @@ UMAP <- function(fcs_files,
     x
   })
 
-  set.seed(seed)
   dimred_res <- uwot::umap(X = ff_agg@exprs[, names(cl_markers)],
                            n_neighbors = 15, scale = TRUE)
 
@@ -2357,17 +2305,11 @@ UMAP <- function(fcs_files,
                                        all_markers))
 
   df$file_id <- ff_agg@exprs[,"File2"]
-  df$batch <- NA
-  df$sample_name <- NA
-
-  for (i in 1:length(fcs_files)){
-
-    file <- fcs_files[i]
-    batch <- stringr::str_match(file, batch_pattern)[,1]
-    df[df[, "file_id"] == i, "batch"] <- batch
-    sample_id <- gsub(".fcs|_gated.fcs|_CC_gated.fcs","", basename(file))
-    df[df[, "file_id"] == i, "sample_name"] <- sample_id
-  }
+  df$batch2 <- sapply(df$file_id, function(id) {
+    stringr::str_match(fcs_files[id], batch_pattern)[,1]
+  })
+  df$sample_name2 <-  sapply(df$file_id, function(id) {
+    gsub(".fcs|_gated.fcs|_CC_gated.fcs","", basename(fcs_files[id]))  })
 
   return(df)
 
@@ -2499,7 +2441,6 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
 
     nCells <- length(file_list[[f]]) * 50000
     print(paste("aggregating files for", f, "normalization"))
-    set.seed(seed)
     ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = file_list[[f]],
                                   cTotal = nCells,
                                   writeOutput = F,
@@ -2623,12 +2564,12 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
 }
 
 
-##### flowAI internal functions ### taken from the package 
+##### flowAI internal functions ### taken from the package
 
 
 #' #' @references this code uses internal functions from flowAI package
-#' #' Monaco, G., Chen, H., Poidinger, M., Chen, J., de Magalhães, J.P., 
-#' #' and Larbi, A. (2016). flowAI: automatic and interactive anomaly discerning 
+#' #' Monaco, G., Chen, H., Poidinger, M., Chen, J., de Magalhães, J.P.,
+#' #' and Larbi, A. (2016). flowAI: automatic and interactive anomaly discerning
 #' #' tools for flow cytometry data. Bioinformatics 32, 2473–2480.
 .flow_rate_check_adapted <- function (x, FlowRateData, alpha = alpha,
                                       use_decomp = use_decomp)
@@ -2671,8 +2612,8 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
 }
 
 
-.anomaly_detection_addapted <- function (x, max_anoms = 0.49, direction = "both", alpha = 0.01, 
-                                         use_decomp = TRUE, period = 1, verbose = FALSE) 
+.anomaly_detection_addapted <- function (x, max_anoms = 0.49, direction = "both", alpha = 0.01,
+                                         use_decomp = TRUE, period = 1, verbose = FALSE)
 {
   if (is.vector(x) && is.numeric(x)) {
     x <- ts(x, frequency = period)
@@ -2689,8 +2630,8 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     x <- na.omit(x)
   }
   if (max_anoms > 0.49) {
-    stop(paste("max_anoms must be less than 50% of the data points (max_anoms =", 
-               round(max_anoms * length(x), 0), " data_points =", 
+    stop(paste("max_anoms must be less than 50% of the data points (max_anoms =",
+               round(max_anoms * length(x), 0), " data_points =",
                length(x), ")."))
   }
   if (!direction %in% c("pos", "neg", "both")) {
@@ -2707,7 +2648,7 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     med_t <- trunc(median(x_cf$trend))
     sign_n <- sign(x_cf$trend - med_t)
     sign_n[which(sign_n == 0)] <- 1
-    x_2 <- as.vector(trunc(abs(x - med_t) + abs(x_cf$cycle)) * 
+    x_2 <- as.vector(trunc(abs(x - med_t) + abs(x_cf$cycle)) *
                        sign_n)
     trend <- x_cf$trend
   }
@@ -2715,12 +2656,12 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     x_2 <- as.vector(x - median(x))
     trend <- x
   }
-  anomaly_direction = switch(direction, pos = data.frame(one_tail = TRUE, 
-                                                         upper_tail = TRUE), neg = data.frame(one_tail = TRUE, 
-                                                                                              upper_tail = FALSE), both = data.frame(one_tail = FALSE, 
+  anomaly_direction = switch(direction, pos = data.frame(one_tail = TRUE,
+                                                         upper_tail = TRUE), neg = data.frame(one_tail = TRUE,
+                                                                                              upper_tail = FALSE), both = data.frame(one_tail = FALSE,
                                                                                                                                      upper_tail = TRUE))
   n <- length(x_2)
-  data_det <- data.frame(index = 1:length(x), values = x_2, 
+  data_det <- data.frame(index = 1:length(x), values = x_2,
                          or_values = trend)
   max_outliers <- trunc(n * max_anoms)
   func_ma <- match.fun(median)
@@ -2730,7 +2671,7 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
   one_tail <- anomaly_direction$one_tail
   upper_tail <- anomaly_direction$upper_tail
   for (i in 1L:max_outliers) {
-    if (verbose) 
+    if (verbose)
       message(paste(i, "/", max_outliers, "completed"))
     if (one_tail) {
       if (upper_tail) {
@@ -2744,13 +2685,13 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
       ares = abs(data_det[[2L]] - func_ma(data_det[[2L]]))
     }
     data_sigma <- func_sigma(ares)
-    if (data_sigma == 0) 
+    if (data_sigma == 0)
       break
     ares <- ares/data_sigma
     R <- max(ares)
     temp_max_idx <- which(ares == R)[1L]
     R_idx[i] <- data_det[[1L]][temp_max_idx]
-    data_det <- data_det[-which(data_det[[1L]] == R_idx[i]), 
+    data_det <- data_det[-which(data_det[[1L]] == R_idx[i]),
     ]
     if (one_tail) {
       p <- 1 - alpha/(n - i + 1)
@@ -2759,9 +2700,9 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
       p <- 1 - alpha/(2 * (n - i + 1))
     }
     t <- qt(p, (n - i - 1L))
-    lam <- t * (n - i)/sqrt((n - i - 1 + t^2) * (n - i + 
+    lam <- t * (n - i)/sqrt((n - i - 1 + t^2) * (n - i +
                                                    1))
-    if (R > lam) 
+    if (R > lam)
       num_anoms <- i
   }
   if (num_anoms > 0) {
@@ -2775,30 +2716,30 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
   return(list(anoms = anoms_data, num_obs = n))
 }
 
-.cffilter_adapted <- function (x, pl = NULL, pu = NULL, root = FALSE, drift = FALSE, 
-                               type = c("asymmetric", "symmetric", "fixed", "baxter-king", 
-                                        "trigonometric"), nfix = NULL, theta = 1) 
+.cffilter_adapted <- function (x, pl = NULL, pu = NULL, root = FALSE, drift = FALSE,
+                               type = c("asymmetric", "symmetric", "fixed", "baxter-king",
+                                        "trigonometric"), nfix = NULL, theta = 1)
 {
   type = match.arg(type)
-  if (is.null(root)) 
+  if (is.null(root))
     root <- FALSE
-  if (is.null(drift)) 
+  if (is.null(drift))
     drift <- FALSE
-  if (is.null(theta)) 
+  if (is.null(theta))
     theta <- 1
-  if (is.null(type)) 
+  if (is.null(type))
     type <- "asymmetric"
-  if (is.ts(x)) 
+  if (is.ts(x))
     freq = frequency(x)
   else freq = 1
   if (is.null(pl)) {
-    if (freq > 1) 
+    if (freq > 1)
       pl = trunc(freq * 1.5)
     else pl = 2
   }
-  if (is.null(pu)) 
+  if (is.null(pu))
     pu = trunc(freq * 8)
-  if (is.null(nfix)) 
+  if (is.null(nfix))
     nfix = freq * 3
   nq = length(theta) - 1
   b = 2 * pi/pl
@@ -2808,44 +2749,44 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
   x = as.matrix(x)
   n = nrow(x)
   nvars = ncol(x)
-  if (n < 5) 
+  if (n < 5)
     warning("# of observations < 5")
-  if (n < (2 * nq + 1)) 
+  if (n < (2 * nq + 1))
     stop("# of observations must be at least 2*q+1")
-  if (pu <= pl) 
+  if (pu <= pl)
     stop("pu must be larger than pl")
   if (pl < 2) {
     warning("pl less than 2 , reset to 2")
     pl = 2
   }
-  if (root != 0 && root != 1) 
+  if (root != 0 && root != 1)
     stop("root must be 0 or 1")
-  if (drift < 0 || drift > 1) 
+  if (drift < 0 || drift > 1)
     stop("drift must be 0 or 1")
-  if ((type == "fixed" || type == "baxter-king") && nfix < 
-      1) 
+  if ((type == "fixed" || type == "baxter-king") && nfix <
+      1)
     stop("fixed lag length must be >= 1")
-  if (type == "fixed" & nfix < nq) 
+  if (type == "fixed" & nfix < nq)
     stop("fixed lag length must be >= q")
-  if ((type == "fixed" || type == "baxter-king") && nfix >= 
-      n/2) 
+  if ((type == "fixed" || type == "baxter-king") && nfix >=
+      n/2)
     stop("fixed lag length must be < n/2")
-  if (type == "trigonometric" && (n - 2 * floor(n/2)) != 0) 
+  if (type == "trigonometric" && (n - 2 * floor(n/2)) != 0)
     stop("trigonometric regressions only available for even n")
   theta = as.matrix(theta)
   m1 = nrow(theta)
   m2 = ncol(theta)
-  if (m1 > m2) 
+  if (m1 > m2)
     th = theta
   else th = t(theta)
   g = convolve(th, th, type = "open")
   cc = g[(nq + 1):(2 * nq + 1)]
   j = 1:(2 * n)
-  B = as.matrix(c((b - a)/pi, (sin(j * b) - sin(j * a))/(j * 
+  B = as.matrix(c((b - a)/pi, (sin(j * b) - sin(j * a))/(j *
                                                            pi)))
   R = matrix(0, n, 1)
   if (nq > 0) {
-    R0 = B[1] * cc[1] + 2 * t(B[2:(nq + 1)]) * cc[2:(nq + 
+    R0 = B[1] * cc[1] + 2 * t(B[2:(nq + 1)]) * cc[2:(nq +
                                                        1)]
     R[1] = pi * R0
     for (i in 2:n) {
@@ -2866,7 +2807,7 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     if (nq == 0) {
       for (i in 1:n) {
         AA[i, i:n] = t(B[1:(n - i + 1)])
-        if (root) 
+        if (root)
           AA[i, n] = R[n + 1 - i]/(2 * pi)
       }
       AA[1, 1] = AA[n, n]
@@ -2884,12 +2825,12 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
           ii = ii + 1
           d[ii] = Bge(jj, nq, B, cc)
         }
-        if (root == 1) 
+        if (root == 1)
           d[n - 1] = R[n - np]
         Bhat = Ainv %*% d
         AA[np + 1, ] = t(Bhat)
       }
-      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2), 
+      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2),
       ]))
     }
   }
@@ -2898,12 +2839,12 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
       for (i in 2:ceiling(n/2)) {
         np = i - 1
         AA[i, i:(i + np)] = t(B[1:(1 + np)])
-        if (root) 
+        if (root)
           AA[i, i + np] = R[np + 1]/(2 * pi)
-        AA[i, (i - 1):(i - np)] = AA[i, (i + 1):(i + 
+        AA[i, (i - 1):(i - np)] = AA[i, (i + 1):(i +
                                                    np)]
       }
-      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2), 
+      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2),
       ]))
     }
     else {
@@ -2918,12 +2859,12 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
           ii = ii + 1
           d[ii] = Bge(jj, nq, B, cc)
         }
-        if (root) 
+        if (root)
           d[nn - 1] = R[nf + 1]
         Bhat = Ainv %*% d
         AA[np + 1, 1:(2 * np + 1)] = t(Bhat)
       }
-      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2), 
+      AA[(ceiling(n/2) + 1):n, ] = .flipud_adapted(.fliplr_adapted(AA[1:floor(n/2),
       ]))
     }
   }
@@ -2936,7 +2877,7 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
         bb[2 * nfix + 1] = R[nfix + 1]/(2 * pi)
         bb[1] = R[nfix + 1]/(2 * pi)
       }
-      for (i in (nfix + 1):(n - nfix)) AA[i, (i - nfix):(i + 
+      for (i in (nfix + 1):(n - nfix)) AA[i, (i - nfix):(i +
                                                            nfix)] = t(bb)
     }
     else {
@@ -2949,10 +2890,10 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
         ii = ii + 1
         d[ii] = Bge(jj, nq, B, cc)
       }
-      if (root) 
+      if (root)
         d[nn - 1] = R[nn - nfix]
       Bhat = Ainv %*% d
-      for (ii in (nfix + 1):(n - nfix)) AA[ii, (ii - nfix):(ii + 
+      for (ii in (nfix + 1):(n - nfix)) AA[ii, (ii - nfix):(ii +
                                                               nfix)] = t(Bhat)
     }
   }
@@ -2961,13 +2902,13 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     bb[(nfix + 1):(2 * nfix + 1)] = B[1:(nfix + 1)]
     bb[nfix:1] = B[2:(nfix + 1)]
     bb = bb - sum(bb)/(2 * nfix + 1)
-    for (i in (nfix + 1):(n - nfix)) AA[i, (i - nfix):(i + 
+    for (i in (nfix + 1):(n - nfix)) AA[i, (i - nfix):(i +
                                                          nfix)] = t(bb)
   }
   if (type == "trigonometric") {
     jj = 1:(n/2)
     jj = jj[((n/pu) <= jj & jj <= (n/pl) & jj < (n/2))]
-    if (!any(jj)) 
+    if (!any(jj))
       stop("frequency band is empty in trigonometric regression")
     om = 2 * pi * jj/n
     if (pl > 2) {
@@ -2998,11 +2939,11 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
       cat("test =", tst, "\n")
     }
   }
-  if (drift) 
+  if (drift)
     x = undrift(x)
   x.cycle = AA %*% as.matrix(x)
   if (type == "fixed" || type == "symmetric" || type == "baxter-king") {
-    if (nfix > 0) 
+    if (nfix > 0)
       x.cycle[c(1:nfix, (n - nfix + 1):n)] = NA
   }
   x.trend = x - x.cycle
@@ -3012,29 +2953,29 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     x.trend = ts(x.trend, start = tsp.x[1], frequency = tsp.x[3])
     x = ts(x, start = tsp.x[1], frequency = tsp.x[3])
   }
-  if (type == "asymmetric") 
+  if (type == "asymmetric")
     title = "Chiristiano-Fitzgerald Asymmetric Filter"
-  if (type == "symmetric") 
+  if (type == "symmetric")
     title = "Chiristiano-Fitzgerald Symmetric Filter"
-  if (type == "fixed") 
+  if (type == "fixed")
     title = "Chiristiano-Fitzgerald Fixed Length Filter"
-  if (type == "baxter-king") 
+  if (type == "baxter-king")
     title = "Baxter-King Fixed Length Filter"
-  if (type == "trigonometric") 
+  if (type == "trigonometric")
     title = "Trigonometric Regression Filter"
-  res <- list(cycle = x.cycle, trend = x.trend, fmatrix = AA, 
-              title = title, xname = xname, call = as.call(match.call()), 
-              type = type, pl = pl, pu = pu, nfix = nfix, root = root, 
+  res <- list(cycle = x.cycle, trend = x.trend, fmatrix = AA,
+              title = title, xname = xname, call = as.call(match.call()),
+              type = type, pl = pl, pu = pu, nfix = nfix, root = root,
               drift = drift, theta = theta, method = "cffilter", x = x)
   return(structure(res, class = "mFilter"))
 }
 
-.flipud_adapted <- function (x) 
+.flipud_adapted <- function (x)
 {
   apply(as.matrix(x), 2, rev)
 }
 
-.fliplr_adapted <- function (x) 
+.fliplr_adapted <- function (x)
 {
   t(apply(as.matrix(x), 1, rev))
 }

@@ -207,6 +207,8 @@ md$fcs_new_name <- paste0(md$ID, "_", md$STIM, "_", md$BATCH, ".fcs")
 # aggregate files batch by batch
 aggregate_files(files,
                 md,
+                barcode_column = "barcode_name",
+                batch_column = "BATCH",
                 cores = 2,
                 out_dir = aggregate_dir,
                 write_agg_file = TRUE)
@@ -335,8 +337,10 @@ batch <- stringr::str_match(files_after_norm, "day[0-9]*")[,1]
 files_after_norm <- files_after_norm[order(factor(batch))]
 
 # Plot batch effect
+set.seed(789)
 plot_batch(files_before_norm = files_before_norm,
            files_after_norm = files_after_norm,
+           cores = 1,
            out_dir = norm_dir,
            batch_pattern = batch_pattern,
            clustering_markers = c("CD", "IgD", "HLA"),
@@ -443,16 +447,13 @@ norm_dir <- file.path(dir, "CytoNormed")
 # Set output directory
 analysis_dir <- file.path(dir, "Analysis")
 
-if (!dir.exists(analysis_dir)) {
-  dir.create(analysis_dir)
-}
-
 files <- list.files(norm_dir,
                     pattern = ".fcs$",
                     full.names = TRUE)
 batch_pattern <- stringr::str_match(basename(files), ".*(day[0-9]*).*.fcs")[,2]
 
 # Build UMAP on aggregated files
+set.seed(1)
 UMAP_res <- UMAP(fcs_files = files,
                  clustering_markers = c("CD", "HLA", "IgD"),
                  functional_markers = c("IL", "TNF", "TGF", "Gr", "IFNa", "MIP", "MCP1"),
