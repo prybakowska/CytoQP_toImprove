@@ -141,7 +141,7 @@ files <- list.files(clean_dir,
                     pattern = "_cleaned.fcs$",
                     full.names = TRUE)
 
-# Read in file scores
+# Read in file scores if calculated
 file_scores <- readRDS(list.files(path = dir,
                                   recursive = TRUE,
                                   full.names = TRUE,

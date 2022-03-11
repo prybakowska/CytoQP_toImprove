@@ -1330,8 +1330,9 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
 #' regarding the batch.
 #'
 #' @param fcs_files Character, full path to fcs files.
-#' @param file_batch_id Character vector, batch label for each fcs_file,
-#' the order needs to be the same as in fcs_files.
+#' @param file_batch_id Character vector with batch label for each fcs_file, 
+#' the order and the length needs to be the same as in fcs_files. if only batch 
+#' is processed can be prepared as e.g. file_batch_id <- rep("batch", length(files))
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to NULL, which means that the following path will be created
 #' file.path(getwd(), "Quality_Control").
@@ -1370,6 +1371,11 @@ file_quality_check <- function(fcs_files,
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Quality_Control")
   }
+  
+  if(length(file_batch_id) != length(fcs_files)){
+    stop("the lenght of the file_batch_id is not equal to the lenght of fcs_files")
+  }
+  
   if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   if (!is.null(file_batch_id)) {
@@ -1424,9 +1430,7 @@ file_quality_check <- function(fcs_files,
   
   file_id <- which(file == fcs_files)
   batch_id <- file_batch_id[file_id]
-  
-  
-  
+
   if(!is.null(barcodes_used)){
     if(is.list(barcodes_used)){
       s_key <- barcode_key[rownames(barcode_key) %in% barcodes_list[[batch_id]],]
@@ -1508,8 +1512,9 @@ file_quality_check <- function(fcs_files,
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param cores Number of cores to be used
-#' @param file_batch_id Character vector, batch label for each fcs_file,
-#' the order needs to be the same as in fcs_files.
+#' @param file_batch_id Character vector with batch label for each fcs_file, 
+#' the order and the length needs to be the same as in fcs_files. if only batch 
+#' is processed can be prepared as e.g. file_batch_id <- rep("batch", length(files))
 #' @param file_score Data frame with quality scores obtained from
 #' file_quality_check.
 #' @param out_dir Character, pathway to where the plots should be saved,
@@ -1519,8 +1524,8 @@ file_quality_check <- function(fcs_files,
 #' default is set to 0.18
 #' @param to_plot Logical, if plots for yields and debarcoding quality shoudl we drawn
 #' @param barcodes_used character, the names of the barcodes that were used, eg.
-#' barcode 1 is the same as A1. If NULL ae the barcodes contained in sample_key
-#' from CATALYST package will be used
+#' barcode 1 is the same as A1. If NULL all the barcodes contained in sample_key
+#' from CATALYST package will be used.
 #' @param less_than_th logicle, if file names for which debarcoding threshold lower than
 #' set in treshold parameter should be saved in out_dir, default FALSE
 #' @param barcode_key matrix as in CATALYST::assignPrelim, the debarcoding scheme.
@@ -1533,7 +1538,10 @@ file_quality_check <- function(fcs_files,
 #' to TRUE save plots for yields and debarcode_quality in out_dir. If less_than_th
 #' set to TRUE save file names with lower than the value set in threshold parameter
 #' are saved into file called "files_with_lower_debarcoding_threshold.RDS" in out_dir
-
+#' 
+#' @examples 
+#' 
+#' @export
 debarcode_files <- function(fcs_files,
                             cores = 1,
                             file_batch_id,
@@ -1561,6 +1569,9 @@ debarcode_files <- function(fcs_files,
     }
   }
   
+   if(length(file_batch_id) != length(fcs_files)){
+    stop("the lenght of the file_batch_id is not equal to the lenght of fcs_files")
+  }
   
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Debarcoded")
@@ -1586,156 +1597,6 @@ debarcode_files <- function(fcs_files,
     saveRDS(unlist(lessFiles), file.path(out_dir, "files_with_lower_debarcoding_threshold.RDS"))
   }
 }
-
-
-#' #' debarcode_files
-#' #'
-#' #' @description performs sample debarcoding
-#' #'
-#' #' @param fcs_files Character, full path to fcs_files.
-#' #' @param file_batch_id Character vector, batch label for each fcs_file,
-#' #' the order needs to be the same as in fcs_files.
-#' #' @param file_score Data frame with quality scores obtained from 
-#' #' file_quality_check.
-#' #' @param out_dir Character, pathway to where the plots should be saved,
-#' #' only if argument to_plot = TRUE, default is set to working directory
-#' #' @param min_threshold logicle, if the minimal threshold for barcoding should be applied.
-#' #' @param threshold numeric, value for the minimum threshold for debarcoding,
-#' #' default is set to 0.18
-#' #' @param to_plot Logical, if plots for yields and debarcoding quality shoudl we drawn
-#' #' @param barcodes_used character, the names of the barcodes that were used, eg.
-#' #' barcode 1 is the same as A1. If NULL ae the barcodes contained in sample_key
-#' #' from CATALYST package will be used
-#' #' @param less_than_th logicle, if file names for which debarcoding threshold lower than
-#' #' set in treshold parameter should be saved in out_dir, default FALSE
-#' #' @param barcode_key matrix as in CATALYST::assignPrelim, the debarcoding scheme.
-#' #' A binary matrix with sample names as row names and numeric masses as column names
-#' #' OR a vector of numeric masses corresponding to barcode channels.
-#' #' When the latter is supplied, 'assignPrelim' will create a scheme of the
-#' #' appropriate format internally.
-#' #'
-#' #' @return save debarcoded fcs files in out_dir. If parameter to_plot set
-#' #' to TRUE save plots for yields and debarcode_quality in out_dir. If less_than_th
-#' #' set to TRUE save file names with lower than the value set in threshold parameter
-#' #' are saved into file called "files_with_lower_debarcoding_threshold.RDS" in out_dir
-#' 
-#' debarcode_files <- function(fcs_files,
-#'                             file_batch_id,
-#'                             file_score = NULL,
-#'                             out_dir = NULL,
-#'                             min_threshold = TRUE,
-#'                             threshold = 0.18,
-#'                             to_plot = TRUE,
-#'                             barcodes_used = NULL,
-#'                             less_than_th = FALSE,
-#'                             barcode_key = NULL){
-#' 
-#'   if(anyDuplicated(fcs_files) != 0){
-#'     stop("names of fcs files are duplicated")
-#'   }
-#'   
-#'   if(!is.null(file_score)){
-#'     if(!inherits(file_score, "data.frame")) {
-#'       stop("file_scores is not a data frame")
-#'     } else {
-#'       # Select good quality files
-#'       good_files <- file_scores$file_names[file_scores$quality == "good"]
-#'       fcs_files_clean <- fcs_files[basename(fcs_files) %in% good_files]
-#'       fcs_files <- fcs_files_clean
-#'     }
-#'   }
-#'   
-#'   for (file in fcs_files){
-#'     print(paste0("   ", Sys.time()))
-#'     print(paste0("   Debarcoding ", file))
-#'     ff <- flowCore::read.FCS(file, transformation = FALSE)
-#' 
-#'     file_id <- which(file == fcs_files)
-#'     batch_id <- file_batch_id[file_id]
-#' 
-#'     if(is.null(out_dir)){
-#'       out_dir <- file.path(getwd(), "Debarcoded")
-#'     }
-#'     if(!dir.exists(out_dir)){dir.create(out_dir)}
-#' 
-#'     if(!is.null(barcodes_used)){
-#'       if(is.list(barcodes_used)){
-#'         s_key <- barcode_key[rownames(barcode_key) %in% barcodes_list[[batch_id]],]
-#'       } else {
-#'         s_key <- barcode_key[rownames(barcode_key) %in% barcodes_used,]
-#'       }
-#' 
-#'     } else {
-#'       s_key <- barcode_key
-#'     }
-#' 
-#'     dat <- CATALYST::prepData(ff)
-#'     dat <- CATALYST::assignPrelim(dat, bc_key = s_key)
-#'     rownames(dat)[SummarizedExperiment::rowData(dat)$is_bc]
-#'     # table(colData(dat)$bc_id)
-#'     dat <- CATALYST::estCutoffs(dat)
-#' 
-#'     less_than_th <- c()
-#'     if (min_threshold == TRUE){
-#'       if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
-#'         warning(paste0("cutoff lower than 0.18 has been detected for ", basename(file),
-#'                       ", cutoff will be set to 0.18"))
-#'         less_than_th <- c(less_than_th, basename(file))
-#'       }
-#' 
-#'       id <- S4Vectors::metadata(dat)$sep_cutoffs < threshold
-#'       S4Vectors::metadata(dat)$sep_cutoffs[id] <- threshold
-#' 
-#'     } else {
-#'       if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
-#'         warning(paste0("cutoff lower than ", threshold, " detected for ", basename(file)))
-#'         less_than_th <- c(less_than_th, basename(file))
-#'       }
-#'     }
-#' 
-#'     id <- is.na(S4Vectors::metadata(dat)$sep_cutoffs)
-#'     S4Vectors::metadata(dat)$sep_cutoffs[id] <- 1
-#' 
-#'     if (to_plot){
-#'       p <- CATALYST::plotYields(dat, which = rownames(s_key))
-#' 
-#'       pdf(file.path(out_dir, paste(gsub(".fcs", "_yields.pdf", basename(file)))))
-#'       for (name in names(p)){
-#'         print(p[[name]])
-#'       }
-#'       dev.off()
-#'     }
-#' 
-#'     dat <- CATALYST::applyCutoffs(dat)
-#' 
-#'     if (to_plot){
-#'       p <- CATALYST::plotEvents(dat, n = 500)
-#' 
-#'       pdf(file.path(out_dir, paste(gsub(".fcs", "_debarcode_quality.pdf",
-#'                                         basename(file)))))
-#'       for (name in names(p)){
-#'         print(p[[name]])
-#'       }
-#'       dev.off()
-#'     }
-#' 
-#'     dat <- dat[, dat$bc_id !=0]
-#'     fs <- CATALYST::sce2fcs(dat, split_by = "bc_id")
-#' 
-#'     tmp_dir <- file.path(out_dir, batch_id)
-#'     if(!dir.exists(tmp_dir)) dir.create(tmp_dir)
-#' 
-#'     file_name <- gsub("_cleaned.fcs|.fcs", "", basename(file))
-#' 
-#'     flowCore::write.flowSet(fs, outdir = tmp_dir,
-#'                   filename = paste0(rownames(fs@phenoData), "_", file_name,
-#'                                     "_debarcoded.fcs"))
-#'   }
-#' 
-#'   if(less_than_th){
-#'     saveRDS(less_than_th, file.path(out_dir, "files_with_lower_debarcoding_threshold.RDS"))
-#'   }
-#' }
 
 
 .aggregate_ind <- function(fcs_files,
