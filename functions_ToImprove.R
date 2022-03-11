@@ -1494,24 +1494,24 @@ debarcode_files <- function(fcs_files,
 
     less_than_th <- c()
     if (min_threshold == TRUE){
-      if(any(metadata(dat)$sep_cutoffs < threshold)){
+      if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
         warning(paste0("cutoff lower than 0.18 has been detected for ", basename(file),
                       ", cutoff will be set to 0.18"))
         less_than_th <- c(less_than_th, basename(file))
       }
 
-      id <- metadata(dat)$sep_cutoffs < threshold
-      metadata(dat)$sep_cutoffs[id] <- threshold
+      id <- S4Vectors::metadata(dat)$sep_cutoffs < threshold
+      S4Vectors::metadata(dat)$sep_cutoffs[id] <- threshold
 
     } else {
-      if(any(metadata(dat)$sep_cutoffs < threshold)){
+      if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
         warning(paste0("cutoff lower than ", threshold, " detected for ", basename(file)))
         less_than_th <- c(less_than_th, basename(file))
       }
     }
 
-    id <- is.na(metadata(dat)$sep_cutoffs)
-    metadata(dat)$sep_cutoffs[id] <- 1
+    id <- is.na(S4Vectors::metadata(dat)$sep_cutoffs)
+    S4Vectors::metadata(dat)$sep_cutoffs[id] <- 1
 
     if (to_plot){
       p <- CATALYST::plotYields(dat, which = rownames(s_key))

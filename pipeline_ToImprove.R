@@ -166,7 +166,7 @@ for (batch in unique(file_batch_id)){
 
 # Debarcode files
 debarcode_files(fcs_files = files,
-                out_dir = debarcode_dir,
+                out_dir = NULL,
                 file_score = file_scores,
                 min_threshold = TRUE,
                 barcodes_used = barcodes_list,
