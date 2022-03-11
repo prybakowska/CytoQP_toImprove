@@ -1488,7 +1488,7 @@ debarcode_files <- function(fcs_files,
 
     dat <- CATALYST::prepData(ff)
     dat <- CATALYST::assignPrelim(dat, bc_key = s_key)
-    rownames(dat)[rowData(dat)$is_bc]
+    rownames(dat)[SummarizedExperiment::rowData(dat)$is_bc]
     # table(colData(dat)$bc_id)
     dat <- CATALYST::estCutoffs(dat)
 
