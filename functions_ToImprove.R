@@ -1506,28 +1506,31 @@ file_quality_check <- function(fcs_files,
   return(fileOut)
 }
 
-#' debarcode_files
+#' Debarcodes files
 #'
 #' @description performs sample debarcoding
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param cores Number of cores to be used
 #' @param file_batch_id Character vector with batch label for each fcs_file, 
-#' the order and the length needs to be the same as in fcs_files. if only batch 
+#' the order and the length needs to be the same as in fcs_files. If only batch 
 #' is processed can be prepared as e.g. file_batch_id <- rep("batch", length(files))
 #' @param file_score Data frame with quality scores obtained from
-#' file_quality_check.
+#' file_quality_check.Default set to NULL.
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to working directory
-#' @param min_threshold logicle, if the minimal threshold for barcoding should be applied.
-#' @param threshold numeric, value for the minimum threshold for debarcoding,
-#' default is set to 0.18
-#' @param to_plot Logical, if plots for yields and debarcoding quality shoudl we drawn
-#' @param barcodes_used character, the names of the barcodes that were used, eg.
-#' barcode 1 is the same as A1. If NULL all the barcodes contained in sample_key
-#' from CATALYST package will be used.
-#' @param less_than_th logicle, if file names for which debarcoding threshold lower than
-#' set in treshold parameter should be saved in out_dir, default FALSE
+#' @param min_threshold Logical, if the minimal threshold for barcoding 
+#' should be applied.
+#' @param threshold Numeric, value for the minimum threshold for debarcoding,
+#' default is set to 0.18, only if min_threshold set to TRUE.
+#' @param to_plot Logical, if plots for yields and debarcoding quality should 
+#' be plotted.
+#' @param barcodes_used Character vector with the names of the barcodes that were used, eg.
+#' barcode 1 is the same as A1. Or a list with the barcodes name per batch. 
+#' If NULL (default) all the barcodes contained in sample_key will be used, 
+#' regarding the batch.
+#' @param less_than_th Logical, if the name of the files for which lower threshold 
+#' than set in parameter threshold was detected. Default is set to FALSE.
 #' @param barcode_key matrix as in CATALYST::assignPrelim, the debarcoding scheme.
 #' A binary matrix with sample names as row names and numeric masses as column names
 #' OR a vector of numeric masses corresponding to barcode channels.
@@ -1540,6 +1543,47 @@ file_quality_check <- function(fcs_files,
 #' are saved into file called "files_with_lower_debarcoding_threshold.RDS" in out_dir
 #' 
 #' @examples 
+#' 
+#' # Set input directory
+#'clean_dir <- file.path(dir, "Cleaned")
+#'
+#'# Define files for debarcoding
+#' files <- list.files(clean_dir,
+#'                    pattern = "_cleaned.fcs$",
+#'                    full.names = TRUE)
+#'
+#'# Read in file scores if calculated
+#'file_scores <- readRDS(list.files(path = dir,
+#'                                  recursive = TRUE,
+#'                                  full.names = TRUE,
+#'                                  pattern = "Quality_AOF_score.RDS"))
+#'
+#'# Define file batch ID for each file
+#'file_batch_id <- stringr::str_match(basename(files),
+#'                                    "(day[0-9]*).*.fcs")[,2]
+#'
+#'# Read in metadata 
+#'md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
+#'
+#'# read in barcode key
+#'sample_key <- CATALYST::sample_key
+
+#'# Extract information about barcodes used in each batch
+#'barcodes_list <- list()
+#'for (batch in unique(file_batch_id)){
+#'  idx <- md[md[,"BATCH"] == batch, "BARCODE"]
+#'  barcodes_list[[batch]] <- rownames(sample_key)[idx]
+#'}
+#'
+#'# Debarcode files
+#'debarcode_files(fcs_files = files,
+#'                out_dir = NULL,
+#'                file_score = file_scores,
+#'                min_threshold = TRUE,
+#'                barcodes_used = barcodes_list,
+#'                file_batch_id = file_batch_id,
+#'                less_than_th = TRUE,
+#'                barcode_key = sample_key)
 #' 
 #' @export
 debarcode_files <- function(fcs_files,

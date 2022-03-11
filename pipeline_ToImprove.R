@@ -151,7 +151,7 @@ file_scores <- readRDS(list.files(path = dir,
 file_batch_id <- stringr::str_match(basename(files),
                                     "(day[0-9]*).*.fcs")[,2]
 
-# Read in metadata
+# Read in metadata 
 md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
 
 # read in barcode key
