@@ -1412,6 +1412,8 @@ file_quality_check <- function(fcs_files,
 #' @param fcs_files Character, full path to fcs_files.
 #' @param file_batch_id Character vector, batch label for each fcs_file,
 #' the order needs to be the same as in fcs_files.
+#' @param file_score Data frame with quality scores obtained from 
+#' file_quality_check.
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to working directory
 #' @param min_threshold logicle, if the minimal threshold for barcoding should be applied.
@@ -1436,7 +1438,8 @@ file_quality_check <- function(fcs_files,
 
 debarcode_files <- function(fcs_files,
                             file_batch_id,
-                            out_dir = getwd(),
+                            file_score = NULL,
+                            out_dir = NULL,
                             min_threshold = TRUE,
                             threshold = 0.18,
                             to_plot = TRUE,
@@ -1447,7 +1450,18 @@ debarcode_files <- function(fcs_files,
   if(anyDuplicated(fcs_files) != 0){
     stop("names of fcs files are duplicated")
   }
-
+  
+  if(!is.null(file_score)){
+    if(!inherits(file_score, "data.frame")) {
+      stop("file_scores is not a data frame")
+    } else {
+      # Select good quality files
+      good_files <- file_scores$file_names[file_scores$quality == "good"]
+      fcs_files_clean <- fcs_files[basename(fcs_files) %in% good_files]
+      fcs_files <- fcs_files_clean
+    }
+  }
+  
   for (file in fcs_files){
     print(paste0("   ", Sys.time()))
     print(paste0("   Debarcoding ", file))
@@ -1456,7 +1470,10 @@ debarcode_files <- function(fcs_files,
     file_id <- which(file == fcs_files)
     batch_id <- file_batch_id[file_id]
 
-    if(!dir.exists(out_dir)) dir.create(out_dir)
+    if(is.null(out_dir)){
+      out_dir <- file.path(getwd(), "Debarcoded")
+    }
+    if(!dir.exists(out_dir)){dir.create(out_dir)}
 
     if(!is.null(barcodes_used)){
       if(is.list(barcodes_used)){

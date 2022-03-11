@@ -141,21 +141,14 @@ files <- list.files(clean_dir,
                     pattern = "_cleaned.fcs$",
                     full.names = TRUE)
 
-# Define out_dir for diagnostic plots
-debarcode_dir <- file.path(dir, "Debarcoded")
-
-# Read in files scores
-file_scores <- readRDS(list.files(dir,
+# Read in file scores
+file_scores <- readRDS(list.files(path = dir,
                                   recursive = TRUE,
                                   full.names = TRUE,
                                   pattern = "Quality_AOF_score.RDS"))
 
-# Select good quality files
-good_files <- file_scores$file_names[file_scores$quality == "good"]
-fcs_files_clean <- files[basename(files) %in% good_files]
-
 # Define file batch ID for each file
-file_batch_id <- stringr::str_match(basename(fcs_files_clean),
+file_batch_id <- stringr::str_match(basename(files),
                                     "(day[0-9]*).*.fcs")[,2]
 
 # Read in metadata
@@ -172,8 +165,9 @@ for (batch in unique(file_batch_id)){
 }
 
 # Debarcode files
-debarcode_files(fcs_files = fcs_files_clean,
+debarcode_files(fcs_files = files,
                 out_dir = debarcode_dir,
+                file_score = file_scores,
                 min_threshold = TRUE,
                 barcodes_used = barcodes_list,
                 file_batch_id = file_batch_id,
@@ -183,7 +177,6 @@ debarcode_files(fcs_files = fcs_files_clean,
 # ------------------------------------------------------------------------------
 # Files aggregation and file name deconvolution --------------------------------
 # ------------------------------------------------------------------------------
-
 # Set input directory
 debarcode_dir <- file.path(dir, "Debarcoded")
 
