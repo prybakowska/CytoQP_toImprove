@@ -51,19 +51,17 @@ bead_normalize(files, cores = 1,
 # Visualized files after bead normalization  -----------------------------------
 #-------------------------------------------------------------------------------
 
-# Set input directory
-raw_data_dir <- file.path(dir, "RawFiles")
-bead_norm_dir <- file.path(dir, "BeadNorm")
-
 # Define files for visualization
 
 # before normalization
+raw_data_dir <- file.path(dir, "RawFiles")
 files_b <- list.files(raw_data_dir,
                       pattern = ".FCS$",
                       ignore.case = T,
                       full.names = TRUE)
 
 # after normalization
+bead_norm_dir <- file.path(dir, "BeadNorm")
 files_a <- list.files(bead_norm_dir,
                       pattern = "_beadNorm.fcs$",
                       ignore.case = T,
@@ -191,18 +189,18 @@ aggregate_dir <- file.path(dir, "Aggregated")
 # Bring metadata
 md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
 
-# assign barcodes names the to barcodes
-md$barcode_name <- paste0(rownames(sample_key)[md$BARCODE])
+# Assign barcodes names
+md$barcode_name <- paste0(rownames(CATALYST::sample_key)[md$BARCODE])
 
-# assign new sample names specifying patient id and its batch name
+# Assign new sample names specifying patient id and its batch name
 md$fcs_new_name <- paste0(md$ID, "_", md$STIM, "_", md$BATCH, ".fcs")
 
-# aggregate files batch by batch
-aggregate_files(files,
+# Aggregate and deconvolute file names
+aggregate_files(fcs_files = files,
                 md,
                 barcode_column = "barcode_name",
                 batch_column = "BATCH",
-                cores = 2,
+                cores = 1,
                 out_dir = aggregate_dir,
                 write_agg_file = TRUE)
 
@@ -234,7 +232,6 @@ files <- list.files(path = aggregate_dir,
                     full.names = TRUE)
 
 # Gate the files and plot the gating strategy for each file
-
 gate_files(files, cores = 1, gate_dir = gate_dir)
 
 # ------------------------------------------------------------------------------

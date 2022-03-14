@@ -1708,38 +1708,74 @@ debarcode_files <- function(fcs_files,
     flowCore::write.FCS(x = flowFrame, filename = file.path(out_dir, outputFile), endian = "big")
   }
 
-  return(flowFrame)
+  # return(flowFrame)
 }
 
-#' aggregate_files
+#' Deconvolute and aggregate debarcoded files
 #'
-#' @description performs aggregation of debarcoded files
+#' @description Performs aggregation of debarcoded files, assigning user defined
+#' name to each file. 
 #'
-#' @param fcs_files Character, full path to fcs_files.
-#' @param md Metadata.
-#' @param cores Number of cores to be used
+#' @param fcs_files Character, full path to the fcs_files.
+#' @param md Metadata. Must contain the following columns: 
+#' batch_column: defines to which batch each file belongs; 
+#' barcode_name: defines to which barcode each file belongs
+#' fcs_new_name: a name for the fcs file that will be given after deconvolution
+#' and aggregation. 
+#' @param cores Number of cores to be used.
 #' @param channels_to_keep Character vector with channel names to be kept.
-#' Default NULL
-#' @param outputFile Character, the names of the file that will be given
+#' Default NULL.
 #' @param maxcells Numeric, maximum cells to randomly aggregate from each file,
-#' default is set to NULL
-#' @param write_agg_file Logicle, if the fcs files should be saved, if TRUE
-#' files will be saved in getwd(). Default set to FALSE
+#' default is set to NULL, which means that all the cells will be aggregated.
+#' @param write_agg_file Logical, if the fcs files should be saved, if TRUE
+#' files will be saved in out_dir. Default set to TRUE.
 #' @param out_dir Character, pathway to where the files should be saved,
-#' only if argument to_plot = TRUE, default is set to working directory
+#' if NULL (default) files will be saved to file.path(getwd(), Aggregated).
+#' 
+#' @return List of the pathways to aggregated files. 
+#' 
+#' @examples 
+#' 
+#' # Set input directory
+#' debarcode_dir <- file.path(dir, "Debarcoded")
+
+#' # Define files for debarcoding
+#' files <- list.files(debarcode_dir,
+#'                     pattern = "_debarcoded.fcs$",
+#'                     full.names = TRUE, recursive = T)
 #'
-#' @return aggregated flow frame
+#' # Define out_dir for aggregated files
+#' aggregate_dir <- file.path(dir, "Aggregated")
 #'
+#' # Bring metadata
+#' md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
+#'
+#' # Assign barcodes names
+#' md$barcode_name <- paste0(rownames(CATALYST::sample_key)[md$BARCODE])
+#'
+#' # Assign new sample names specifying patient id and its batch name
+#' md$fcs_new_name <- paste0(md$ID, "_", md$STIM, "_", md$BATCH, ".fcs")
+#'
+#' # Aggregate and deconvolute file names
+#' aggregate_files(fcs_files = files,
+#'                 md,
+#'                 barcode_column = "barcode_name",
+#'                 batch_column = "BATCH",
+#'                 cores = 1,
+#' 
+#'                 out_dir = aggregate_dir,
+#'                 write_agg_file = TRUE)
+#' 
+#' @export
 aggregate_files <- function(fcs_files,
                             md,
                             barcode_column,
                             batch_column,
                             cores = 1,
                             channels_to_keep = NULL,
-                            outputFile = "aggregate.fcs",
                             maxcells = NULL,
-                            write_agg_file = FALSE,
-                            out_dir = getwd()){
+                            write_agg_file = TRUE,
+                            out_dir = NULL){
 
   # Check parameters
   if(!is(files, "character") & !is(files, "list")) {
@@ -1750,6 +1786,11 @@ aggregate_files <- function(fcs_files,
     stop("cores must be a positive number")
   }
 
+  # create out_dir if does not exist
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Aggregated")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   # Parallelized analysis
   BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
@@ -1772,8 +1813,6 @@ aggregate_files <- function(fcs_files,
                    out_dir = out_dir)
   },
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-
-
 
 }
 
