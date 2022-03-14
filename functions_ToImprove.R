@@ -771,37 +771,39 @@ bead_normalize <- function(files,
 #' @param flow_frame Flow frame, if unstransformed arcsine_transform should be
 #' kept as default, TRUE.
 #'
-#' @return flow frame without beads removed
-gate_out_beads <- function(bead_channel,
+#' @return flow frame with beads removed
+.gate_out_beads <- function(bead_channel,
                            flow_frame){
-  ch <- grep(pattern = bead_channel, x = colnames(flow_frame), value = TRUE)
+  ch <- grep(pattern = bead_channel, x = flowCore::colnames(flow_frame), value = TRUE)
   ids <- flow_frame[,ch] > 0
   # calculate threshold
-  th <- deGate(obj = flow_frame[ids,], channel = ch)
+  th <- flowDensity::deGate(obj = flow_frame[ids,], channel = ch)
   #remove beads
   cells_to_remove <- flow_frame@exprs[, ch] < th
   flow_frame <- flow_frame[cells_to_remove,]
   return(flow_frame)
 }
 
-#' plot_marker_quantiles
+#' Plots quantiles for the markers
 #'
-#' @description Calculates quantiles for selected markers and plots them as
-#' diagnostic plot
+#' @description Calculates quantiles (0.01, 0.25, 0.5, 0.75, 0.99) for 
+#' selected markers and plots them as diagnostic plots.
 #'
 #' @param files_before_norm Character, full path to the unnormalized fcs_files.
 #' @param files_after_norm Character, full path to the normalized fcs_files.
 #' @param batch_pattern Character, batch pattern to be match in the fcs file name
-#' @param uncommon_prefix Character vetor or string, uncommon prefix in the basenames
-#' of the fcs files. The file names needas to be exactly matched so, uncommon prefix
-#' needs to be removed. If NULL prefix like
+#' @param uncommon_prefix Character vector or string, uncommon prefix in 
+#' the basename of the fcs files. The file names need to match, so uncommon prefix
+#' needs to be removed. If NULL (default) prefix like
 #' "Norm|_CC_gated.fcs|_gated.fcs|_beadNorm.fcs|.FCS|.fcs" will be removed.
 #' Default is set to NULL.
-#' @param bead_channel character, the mass for bead channel that is exclusively used for
-#' beads identification, no marker is present at this channel, default 140.
-#' @param remove_beads logical, if beads needs to be removed. This needs to be
-#' set to TRUE if files contains the beads e.g before beads normalization,
-#' default is set to TRUE
+#' @param bead_channel character, the mass for bead channel that is exclusively 
+#' used for beads identification (no marker is assign to this channel),
+#' Default 140.
+#' @param remove_beads Logical, if beads needs to be removed. This needs to be
+#' set to TRUE if files contain beads e.g before beads normalization,
+#' default is set to TRUE. For the visualization purpose the beads will be 
+#' removed using channel set in bead_channel.
 #' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5.
 #' @param markers_to_plot character vector, marker names to be plotted, can be
@@ -810,10 +812,49 @@ gate_out_beads <- function(bead_channel,
 #' the number of colors needs to be equal to the length of batch_pattern
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to working directory.
+#' @param transform_list Transformation list to pass to the flowCore 
+#' transform function, see flowCore::transformList, if different transformation 
+#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and 
+#' arcsine_transform = FALSE no transformation will be applied.
 #'
-#' @return save the plots to out_dir with the name
-#' "Marker distribution across aliquots and batches.pdf"
-
+#' @return Save the pdf with plots to out_dir.
+#' 
+#' @examples 
+#' # Define files for visualization
+#' # Before normalization
+#' raw_data_dir <- file.path(dir, "RawFiles")
+#' files_b <- list.files(raw_data_dir,
+#'                       pattern = ".FCS$",
+#'                       ignore.case = T,
+#'                       full.names = TRUE)
+#'
+#' # After normalization
+#' bead_norm_dir <- file.path(dir, "BeadNorm")
+#' files_a <- list.files(bead_norm_dir,
+#'                       pattern = "_beadNorm.fcs$",
+#'                       ignore.case = T,
+#'                       full.names = TRUE)
+#'
+#' # Define batch id and sample id for each file
+#' batch_pattern <- stringr::str_match(basename(files_b), "(?i).*(day[0-9]*).*.FCS")[,2]
+#'
+#' plot_marker_quantiles(files_after_norm = files_a,
+#'                      files_before_norm = files_b,
+#'                      batch_pattern = batch_pattern,
+#'                      arcsine_transform = TRUE,
+#'                      remove_beads = TRUE,
+#'                      bead_channel = "140",
+#'                      uncommon_prefix = "_beadNorm.fcs|.FCS",
+#'                      markers_to_plot = c("CD", "HLA", "IgD", "IL", "TNF",
+#'                                          "TGF", "GR", "IFNa"),
+#'                      manual_colors = c("darkorchid4", "darkorange", "darkgreen"),
+#'                      out_dir = bead_norm_dir)
+#' 
+#' @import ggplot2
+#' 
+#' @importFrom (magrittr,"%>%")
+#' 
+#' @export
 plot_marker_quantiles <- function(files_before_norm,
                                   files_after_norm,
                                   batch_pattern,
@@ -822,17 +863,19 @@ plot_marker_quantiles <- function(files_before_norm,
                                   uncommon_prefix = NULL,
                                   arcsine_transform = TRUE,
                                   markers_to_plot = NULL,
+                                  plot_name = "Marker_distribution_across_aliquots_and_batches",
                                   manual_colors = NULL,
-                                  out_dir = getwd()){
+                                  out_dir = NULL, 
+                                  transform_list = NULL){
 
   fcs_files <- c(files_after_norm, files_before_norm)
-  tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
-
-  if (!all(file.exists(fcs_files))){
+   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
+  tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
 
-  ff_tmp <- read.FCS(file.path(fcs_files[1]))
+ 
+  ff_tmp <- flowCore::read.FCS(file.path(fcs_files[1]))
 
   if (!is.null(markers_to_plot)){
 
@@ -863,28 +906,30 @@ plot_marker_quantiles <- function(files_before_norm,
   quantiles$Normalization <- gsub(".*.fcs_|.*.FCS_", "", quantiles$File)
   quantiles$File <- gsub("_YES|_NO", "", quantiles$File)
 
-  ## TO DO Reestructure the following code to avoid loops
-
   for (file in fcs_files) {
     print(file)
 
-    ff <- read.FCS(file.path(file))
+    ff <- flowCore::read.FCS(file, transformation = FALSE)
 
-    if(arcsine_transform == TRUE){
-      ff <- flowCore::transform(ff, transformList(grep("Di", colnames(ff),
-                                                       value = TRUE),
-                                        arcsinhTransform(a = 0, b = 1/5,
-                                                         c = 0)))
+    if(arcsine_transform){
+      ff <- flowCore::transform(ff, 
+                                flowCore::transformList(grep("Di", flowCore::colnames(ff),
+                                                             value = TRUE),
+                                                        CytoNorm::cytofTransform))
+    } else if (!is.null(transform_list)){
+      ff <- flowCore::transform(ff, transform_list)
+    } else {
+      ff <- ff
     }
 
     norm <- quantiles$Normalization[(which(quantiles$File == file)[1])]
 
     if(norm == "NO" & remove_beads){
-      ff <- gate_out_beads(bead_channel = bead_channel, flow_frame = ff)
+      ff <- .gate_out_beads(bead_channel = bead_channel, flow_frame = ff)
     }
 
     for (marker in names(norm_markers)) {
-      quantiles_res <-stats::quantile(exprs(ff)[, marker],
+      quantiles_res <-stats::quantile(flowCore::exprs(ff)[, marker],
                                 quantile_values)
       for (i in seq_along(quantiles_res)) {
         quantiles <- quantiles %>%
@@ -950,11 +995,18 @@ plot_marker_quantiles <- function(files_before_norm,
     p <- p + ggplot2::scale_colour_manual(values = c(manual_colors))
   }
 
-  ggplot2::ggsave(filename = "Marker_distribution_across_aliquots_and_batches.pdf",
-                 plot = p,
-                 path = file.path(out_dir),
-                 width = length(fcs_files)*0.25,
-                 height = length(norm_markers)*4, limitsize = F)
+  # create out_dir if does not exist
+  if(is.null(out_dir)){
+    out_dir <- getwd()
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
+  
+  ggplot2::ggsave(filename = paste0(plot_name, ".pdf"),
+                  plot = p,
+                  path = out_dir,
+                  width = length(fcs_files)*0.25,
+                  height = length(norm_markers)*4, limitsize = FALSE)
 }
 
 #' Prepares FlowSOM
@@ -978,7 +1030,7 @@ plot_marker_quantiles <- function(files_before_norm,
 #' arcsine transformation and cofactor 5. Default set to TRUE.
 #' @param seed numeric, set to obtain reproducible results, default 1
 #' @param transform_list Transformation list to pass to the flowCore 
-#' transform function.
+#' transform function see flowCore::transformList.
 #' @param my_colors An array specifying colors to be used for the background 
 #' coloring of metaclusters in FlowSOM and t-SNE plot. Must have a length equal 
 #' to the nClus. 

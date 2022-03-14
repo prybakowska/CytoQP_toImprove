@@ -52,15 +52,14 @@ bead_normalize(files, cores = 1,
 #-------------------------------------------------------------------------------
 
 # Define files for visualization
-
-# before normalization
+# Before normalization
 raw_data_dir <- file.path(dir, "RawFiles")
 files_b <- list.files(raw_data_dir,
                       pattern = ".FCS$",
                       ignore.case = T,
                       full.names = TRUE)
 
-# after normalization
+# After normalization
 bead_norm_dir <- file.path(dir, "BeadNorm")
 files_a <- list.files(bead_norm_dir,
                       pattern = "_beadNorm.fcs$",
@@ -68,7 +67,7 @@ files_a <- list.files(bead_norm_dir,
                       full.names = TRUE)
 
 # Define batch id and sample id for each file
-batch_pattern <- str_match(basename(files_b), "(?i).*(day[0-9]*).*.FCS")[,2]
+batch_pattern <- stringr::str_match(basename(files_b), "(?i).*(day[0-9]*).*.FCS")[,2]
 
 plot_marker_quantiles(files_after_norm = files_a,
                       files_before_norm = files_b,
