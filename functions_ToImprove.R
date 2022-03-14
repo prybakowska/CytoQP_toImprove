@@ -424,6 +424,10 @@ clean_files <- function(files,
     out_dir <- file.path(getwd(), "Cleaned")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir, recursive = TRUE)}
+  
+  if (!all(file.exists(files))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
 
   # Parallelized analysis
   BiocParallel::bplapply(files, function(x) {
@@ -495,6 +499,10 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
     out_dir <- file.path(getwd(), "BeadNorm")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
 
   ff <- FlowSOM::AggregateFlowFrames(fileNames = fcs_files,
                             cTotal = length(fcs_files)*ncells)
@@ -737,6 +745,10 @@ bead_normalize <- function(files,
   # Check parameters
   if(!is(files, "character") & !is(files, "list")) {
     stop("files must be a character vector or a list")
+  }
+  
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
   }
 
   if (any(!is(cores, "numeric") | cores < 1)){
@@ -1429,6 +1441,10 @@ file_quality_check <- function(fcs_files,
   }
   
   if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
 
   if (!is.null(file_batch_id)) {
     scores <- lapply(unique(file_batch_id), function(batch) {
@@ -1654,6 +1670,10 @@ debarcode_files <- function(fcs_files,
     stop("names of fcs files are duplicated")
   }
   
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
+  
   if(!is.null(file_score)){
     if(!inherits(file_score, "data.frame")) {
       stop("file_scores is not a data frame")
@@ -1832,6 +1852,10 @@ aggregate_files <- function(fcs_files,
   # Check parameters
   if(!is(files, "character") & !is(files, "list")) {
     stop("files must be a character vector or a list")
+  }
+  
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
   }
 
   if (any(!is(cores, "numeric") | cores < 1)){
