@@ -1,5 +1,5 @@
 #' Finds all the mass/fluorochrome channels for the flow frame
-#' 
+#'
 #' @description Finds all the mass channels
 #'
 #' @param flow_frame Untransformed flow frame
@@ -8,7 +8,7 @@
 #' @param ... Additional arguments to pass to grep
 #'
 #' @return Logical vector with TRUE values for mass channels
-#' 
+#'
 #' @export
 
 find_mass_ch <- function(flow_frame,
@@ -324,7 +324,7 @@ find_mass_ch <- function(flow_frame,
 #' @description Cleans the flow rate using functions from flowAI package and
 #' the signal using flowCut package.
 #'
-#' @param files Character vector or list with the paths of the raw files.
+#' @param files Character, full path to fcs_file.
 #' @param cores Number of cores to be used.
 #' @param to_plot Character variable that indicates if plots should be generated.
 #' The default is "All", which generates plots for flow rate and all channels.
@@ -362,8 +362,8 @@ find_mass_ch <- function(flow_frame,
 #' set to TRUE, otherwise transformed flow frame is returned. Save plots
 #' with prefix "_beadNorm_flowAI.png" and "flowCutCleaned.png" to out_dir
 #' if parameter to_plot set to "All" or "Flagged Only".
-#' 
-#' @examples 
+#'
+#' @examples
 #' # Set and create the directory where cleaned fcs files will be saved
 #'clean_dir <- file.path(dir, "Cleaned")
 #'
@@ -424,7 +424,7 @@ clean_files <- function(files,
     out_dir <- file.path(getwd(), "Cleaned")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir, recursive = TRUE)}
-  
+
   if (!all(file.exists(files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -489,17 +489,17 @@ clean_files <- function(files,
 #' ref_sample <- baseline_file(fcs_files = files,
 #'                             beads = "dvs",
 #'                             out_dir = bead_norm_dir)
-#'                             
+#'
 #' @export
 baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                        out_dir = getw(), k = 80, ncells = 25000, ...){
-  
+
   # create out_dir if does not exist
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "BeadNorm")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -746,7 +746,7 @@ bead_normalize <- function(files,
   if(!is(files, "character") & !is(files, "list")) {
     stop("files must be a character vector or a list")
   }
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -798,23 +798,23 @@ bead_normalize <- function(files,
 
 #' Plots quantiles for the markers
 #'
-#' @description Calculates quantiles (0.01, 0.25, 0.5, 0.75, 0.99) for 
+#' @description Calculates quantiles (0.01, 0.25, 0.5, 0.75, 0.99) for
 #' selected markers and plots them as diagnostic plots.
 #'
 #' @param files_before_norm Character, full path to the unnormalized fcs_files.
 #' @param files_after_norm Character, full path to the normalized fcs_files.
 #' @param batch_pattern Character, batch pattern to be match in the fcs file name
-#' @param uncommon_prefix Character vector or string, uncommon prefix in 
+#' @param uncommon_prefix Character vector or string, uncommon prefix in
 #' the basename of the fcs files. The file names need to match, so uncommon prefix
 #' needs to be removed. If NULL (default) prefix like
 #' "Norm|_CC_gated.fcs|_gated.fcs|_beadNorm.fcs|.FCS|.fcs" will be removed.
 #' Default is set to NULL.
-#' @param bead_channel character, the mass for bead channel that is exclusively 
+#' @param bead_channel character, the mass for bead channel that is exclusively
 #' used for beads identification (no marker is assign to this channel),
 #' Default 140.
 #' @param remove_beads Logical, if beads needs to be removed. This needs to be
 #' set to TRUE if files contain beads e.g before beads normalization,
-#' default is set to TRUE. For the visualization purpose the beads will be 
+#' default is set to TRUE. For the visualization purpose the beads will be
 #' removed using channel set in bead_channel.
 #' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5.
@@ -824,14 +824,14 @@ bead_normalize <- function(files,
 #' the number of colors needs to be equal to the length of batch_pattern
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to working directory.
-#' @param transform_list Transformation list to pass to the flowCore 
-#' transform function, see flowCore::transformList, if different transformation 
-#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and 
+#' @param transform_list Transformation list to pass to the flowCore
+#' transform function, see flowCore::transformList, if different transformation
+#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
 #' arcsine_transform = FALSE no transformation will be applied.
 #'
 #' @return Save the pdf with plots to out_dir.
-#' 
-#' @examples 
+#'
+#' @examples
 #' # Define files for visualization
 #' # Before normalization
 #' raw_data_dir <- file.path(dir, "RawFiles")
@@ -861,11 +861,11 @@ bead_normalize <- function(files,
 #'                                          "TGF", "GR", "IFNa"),
 #'                      manual_colors = c("darkorchid4", "darkorange", "darkgreen"),
 #'                      out_dir = bead_norm_dir)
-#' 
+#'
 #' @import ggplot2
-#' 
+#'
 #' @importFrom (magrittr,"%>%")
-#' 
+#'
 #' @export
 plot_marker_quantiles <- function(files_before_norm,
                                   files_after_norm,
@@ -877,7 +877,7 @@ plot_marker_quantiles <- function(files_before_norm,
                                   markers_to_plot = NULL,
                                   plot_name = "Marker_distribution_across_aliquots_and_batches",
                                   manual_colors = NULL,
-                                  out_dir = NULL, 
+                                  out_dir = NULL,
                                   transform_list = NULL){
 
   fcs_files <- c(files_after_norm, files_before_norm)
@@ -886,7 +886,7 @@ plot_marker_quantiles <- function(files_before_norm,
   }
   tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
 
- 
+
   ff_tmp <- flowCore::read.FCS(file.path(fcs_files[1]))
 
   if (!is.null(markers_to_plot)){
@@ -924,7 +924,7 @@ plot_marker_quantiles <- function(files_before_norm,
     ff <- flowCore::read.FCS(file, transformation = FALSE)
 
     if(arcsine_transform){
-      ff <- flowCore::transform(ff, 
+      ff <- flowCore::transform(ff,
                                 flowCore::transformList(grep("Di", flowCore::colnames(ff),
                                                              value = TRUE),
                                                         CytoNorm::cytofTransform))
@@ -1012,8 +1012,8 @@ plot_marker_quantiles <- function(files_before_norm,
     out_dir <- getwd()
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
-  
+
+
   ggplot2::ggsave(filename = paste0(plot_name, ".pdf"),
                   plot = p,
                   path = out_dir,
@@ -1041,17 +1041,17 @@ plot_marker_quantiles <- function(files_before_norm,
 #' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5. Default set to TRUE.
 #' @param seed numeric, set to obtain reproducible results, default 1
-#' @param transform_list Transformation list to pass to the flowCore 
+#' @param transform_list Transformation list to pass to the flowCore
 #' transform function see flowCore::transformList.
-#' @param my_colors An array specifying colors to be used for the background 
-#' coloring of metaclusters in FlowSOM and t-SNE plot. Must have a length equal 
-#' to the nClus. 
-#' 
-#' @param to_plot Logical, if FlowSOM tree and t-SNE map should be plotted, 
-#' default set to TRUE.  
+#' @param my_colors An array specifying colors to be used for the background
+#' coloring of metaclusters in FlowSOM and t-SNE plot. Must have a length equal
+#' to the nClus.
+#'
+#' @param to_plot Logical, if FlowSOM tree and t-SNE map should be plotted,
+#' default set to TRUE.
 #'
 #' @return fsom object
-#' 
+#'
 #' @export
 fsom_aof <- function(fcs_files,
                      phenotyping_markers,
@@ -1064,33 +1064,33 @@ fsom_aof <- function(fcs_files,
                      arcsine_transform = TRUE,
                      transform_list = NULL,
                      my_colors = NULL,
-                     seed = 1, 
+                     seed = 1,
                      to_plot = TRUE){
-  
-  
+
+
   if(!exists("phenotyping_channels")){
     o <- capture.output(ff_tmp <- flowCore::read.FCS(file.path(files[1])))
     markers <- FlowSOM::GetMarkers(ff_tmp, flowCore::colnames(ff_tmp))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
   }
-  
+
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Quality_Control")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   if(arcsine_transform){
-    trans <- flowCore::transformList(names(phenotyping_channels), 
+    trans <- flowCore::transformList(names(phenotyping_channels),
                                      CytoNorm::cytofTransform)
-  } 
+  }
   else {
     if(is.null(transform_list)){
       stop("transform_list must be defined")
     }
     trans <- transform_list
   }
-  
+
   fsom <- CytoNorm::prepareFlowSOM(file = fcs_files,
                                    colsToUse = names(phenotyping_channels),
                                    seed = seed,
@@ -1100,40 +1100,40 @@ fsom_aof <- function(fcs_files,
                                                          ydim = ydim,
                                                          nClus = nClus,
                                                          scale = FALSE))
-  
+
   if(to_plot){
     if(is.null(my_colors)){
       backgroundColors <- NULL
-    } 
+    }
     else {
-      
+
       if(max(as.numeric(fsom$metaclustering)) < length(my_colors)){
-        warning("The number of colors is greater than the number of metaclusters only 
+        warning("The number of colors is greater than the number of metaclusters only
              needed number of colors will be used")
         nmcl <- max(as.numeric(fsom$metaclustering))
         backgroundColors <- my_colors[1:nmcl]
-        
+
       }
-      
+
       if(max(as.numeric(fsom$metaclustering)) > length(my_colors)){
-        warning("The number of colors is lower than the number of metaclusters 
+        warning("The number of colors is lower than the number of metaclusters
               default colors will be used")
         backgroundColors <- NULL
-        
+
       }
-      
+
       if(max(as.numeric(fsom$metaclustering)) == length(my_colors)){
         backgroundColors <- my_colors
       }
     }
-    
+
     if(!is.null(batch)){
       filename <- paste0(batch, "_FlowSOM_clustering.pdf")
     }
     else {
       filename <- "FlowSOM_clustering.pdf"
     }
-    
+
     fsomPlot <- FlowSOM::PlotStars(fsom = fsom,
                                    title = "FlowSOM clustering",
                                    backgroundValues = fsom$metaclustering,
@@ -1141,11 +1141,11 @@ fsom_aof <- function(fcs_files,
                                    backgroundColors = backgroundColors)
     fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, plotFile = NULL, seed = seed, cTotal = 20000,
                                     title = "tSNE visualization of FlowSOM metaclusters")
-    
+
     figure <- ggpubr::ggarrange(fsomPlot, fsomTsne,
                                 # labels = c("FlowSOM clustering", "tsne"),
                                 ncol = 2, nrow = 1)
-    
+
     ggplot2::ggsave(filename = filename, plot = figure, device = "pdf", path = out_dir,
                     width =24, height = 10)
   }
@@ -1155,29 +1155,29 @@ fsom_aof <- function(fcs_files,
 
 #' Calculates scaled aof scores
 #'
-#' @description Calculates scaled AOF scores and sample quality score. 
-#' Additionally plots heatmaps for both raw  aof scores and scaled aof scores. 
+#' @description Calculates scaled AOF scores and sample quality score.
+#' Additionally plots heatmaps for both raw  aof scores and scaled aof scores.
 #' @param aof_scores Matrix, array, Aof scores obtained using function
 #' cytutils::greedyCytometryAof.
-#' @param out_dir Character, pathway to where the plots and scores should be 
+#' @param out_dir Character, pathway to where the plots and scores should be
 #' saved, if NULL file.path(getwd(), "Quality_Control) will be used.
-#' @param aof_channels Character vector with the markers and their corresponding 
+#' @param aof_channels Character vector with the markers and their corresponding
 #' channel names used for aof_scoring. Used only for plotting markers instead
-#' of channels. If NULL (default) the colnames(aof_scores) will be used.  
+#' of channels. If NULL (default) the colnames(aof_scores) will be used.
 #' @param batch Character, acquisition batch for each fcs file.
 #' Pass to FlowSOM plot name, default is set to NULL
 #' be saved, default is set to working directory.
 #'
 #' @return Returns data frame with sample scores.Saved heatmaps and data frames
-#' for AOF scores and AOF scaled scores. 
-#' 
+#' for AOF scores and AOF scaled scores.
+#'
 #' @export
-scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL, 
+scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
                              batch = NULL){
   aof_scores_scaled <- scale(aof_scores)
   aof_scores_scaled <- pmax(aof_scores_scaled, 0)^2
   sample_scores <- apply(aof_scores_scaled, 1, sum, na.rm = TRUE)
-  
+
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Quality_Control")
   }
@@ -1197,16 +1197,16 @@ scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
       filename <- file.path(out_dir, paste0(name, ".pdf"))
       main <- name
     }
-    
+
     if(is.null(aof_channels)){
       phenotyping_channels <- colnames(list_scores[[name]])
     }
     else if (all(colnames(aof_scores) %in% names(aof_channels))){
-      
+
       phenotyping_channels <- aof_channels[colnames(aof_scores)]
     } else {
       phenotyping_channels <- colnames(list_scores[[name]])
-      warning("aof_channels do not correspond to the channels selected for 
+      warning("aof_channels do not correspond to the channels selected for
               AOF scoring, colnames from aof_scores will be used for plotting")
     }
 
@@ -1214,7 +1214,7 @@ scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
                        cluster_rows = FALSE,
                        cluster_cols = FALSE,
                        color = colorRampPalette(
-                         RColorBrewer::brewer.pal(n = 9, 
+                         RColorBrewer::brewer.pal(n = 9,
                                                   name = "YlGnBu"))(100),
                        display_numbers = TRUE,
                        labels_col = phenotyping_channels,
@@ -1231,7 +1231,7 @@ scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
     saveRDS(list_scores, file.path(out_dir, "AOF_scores_and_Scaled_AOF_scores.RDS"))
   }
   else {
-    saveRDS(list_scores, file.path(out_dir, 
+    saveRDS(list_scores, file.path(out_dir,
                                    paste0(batch, "_AOF_scores_and_Scaled_AOF_scores.RDS")))
   }
   return(df)
@@ -1240,7 +1240,7 @@ scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
 #' Calculates AOF scores and scaled AOF scores
 #'
 #' @description  Calculates AOF (Average Overlap Frequency) scores using flowSOM
-#' object and greedy algorithm from cytutils package. 
+#' object and greedy algorithm from cytutils package.
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param phenotyping_markers Character vector, marker names to be used for
@@ -1253,15 +1253,15 @@ scaled_aof_score <- function(aof_scores, out_dir = NULL, aof_channels = NULL,
 #' This argument is passed to AOF plot names, default is set to NULL.
 #'
 #' @return Returns data frame with the scaled AOF scores and heatmap plots
-#' representing AOF scores and scaled AOF scores. 
-#' 
+#' representing AOF scores and scaled AOF scores.
+#'
 #' @export
 aof_scoring <- function(fcs_files,
                         phenotyping_markers,
                         fsom,
                         out_dir = NULL,
                         batch = NULL){
-  
+
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Quality_Control")
   }
@@ -1311,18 +1311,18 @@ aof_scoring <- function(fcs_files,
 #' generates plot for outlier and .csv file which indicates which fcs files
 #' could be discarded from further analysis.
 #'
-#' @param scores List of scaled scores per acquisition batch or data frame 
+#' @param scores List of scaled scores per acquisition batch or data frame
 #' of scaled scores, both generated by scaled_aof_score or aof_scoring function
 #' @param out_dir Character, pathway to where the plot and .csv files with
-#' quality scores should be saved, default is set to NULL, thus 
+#' quality scores should be saved, default is set to NULL, thus
 #' file.path(getwd(), "Quality_Control" will be generated.
 #' @param sd How many standard deviation should be use to detect outliers
 #' default is set to 3.
 #'
-#' @return Save .RDS and .csv Quality scores for further analysis, and 
+#' @return Save .RDS and .csv Quality scores for further analysis, and
 #' plots and save .png for Quality AOF scores for all files.
 #'
-#' @export 
+#' @export
 file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
 
   if(!inherits(scores, "data.frame") & !inherits(scores, "list")){
@@ -1333,7 +1333,7 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
     out_dir <- file.path(getwd(), "Quality_Control")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   if(inherits(scores, "list")){
     df_scores <- do.call(rbind, scores)
   }
@@ -1356,7 +1356,7 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
   max_score <- max(df_scores$sample_scores)
   max_pctgs <- max_score + (max_score * 0.1)
 
-  p <- ggplot2::ggplot(df_scores, aes(x = file_names, y = sample_scores, 
+  p <- ggplot2::ggplot(df_scores, aes(x = file_names, y = sample_scores,
                                       color = quality)) +
     geom_point(size = 4) +
     scale_colour_manual(values = colors) +
@@ -1372,13 +1372,13 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
           axis.line = element_line(colour = "black"),
           legend.position = "none") +
     scale_x_discrete(breaks = df_scores$file_names[df_scores$quality == "bad"])
- 
+
   if(scores_median + sd * scores_MAD <= max_pctgs){
     p + geom_hline(yintercept = scores_median + sd * scores_MAD,
                    linetype = "dashed", color = "darkgreen", size = 1)
   }
-  
-  ggplot2::ggsave(filename = "Quality_AOF_score.png", plot = p, 
+
+  ggplot2::ggsave(filename = "Quality_AOF_score.png", plot = p,
                   path = file.path(out_dir))
 
   saveRDS(df_scores, file.path(out_dir, "Quality_AOF_score.RDS"))
@@ -1394,8 +1394,8 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
 #' regarding the batch.
 #'
 #' @param fcs_files Character, full path to fcs files.
-#' @param file_batch_id Character vector with batch label for each fcs_file, 
-#' the order and the length needs to be the same as in fcs_files. if only batch 
+#' @param file_batch_id Character vector with batch label for each fcs_file,
+#' the order and the length needs to be the same as in fcs_files. if only batch
 #' is processed can be prepared as e.g. file_batch_id <- rep("batch", length(files))
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to NULL, which means that the following path will be created
@@ -1420,7 +1420,7 @@ file_outlier_detecion <- function(scores, out_dir = NULL, sd) {
 #'
 #' @importFrom flowCore transformList
 #' @import ggplot2
-#' 
+#'
 #' @export
 file_quality_check <- function(fcs_files,
                                file_batch_id = NULL,
@@ -1435,13 +1435,13 @@ file_quality_check <- function(fcs_files,
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Quality_Control")
   }
-  
+
   if(length(file_batch_id) != length(fcs_files)){
     stop("the lenght of the file_batch_id is not equal to the lenght of fcs_files")
   }
-  
+
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -1491,11 +1491,11 @@ file_quality_check <- function(fcs_files,
                            barcodes_used,
                            less_than_th,
                            barcode_key) {
-  
+
   print(paste0("   ", Sys.time()))
   print(paste0("   Debarcoding ", file))
   ff <- flowCore::read.FCS(file, transformation = FALSE)
-  
+
   file_id <- which(file == fcs_files)
   batch_id <- file_batch_id[file_id]
 
@@ -1505,52 +1505,52 @@ file_quality_check <- function(fcs_files,
     } else {
       s_key <- barcode_key[rownames(barcode_key) %in% barcodes_used,]
     }
-    
+
   } else {
     s_key <- barcode_key
   }
-  
+
   dat <- CATALYST::prepData(ff)
   dat <- CATALYST::assignPrelim(dat, bc_key = s_key)
   rownames(dat)[SummarizedExperiment::rowData(dat)$is_bc]
   # table(colData(dat)$bc_id)
   dat <- CATALYST::estCutoffs(dat)
-  
+
   if (min_threshold){
     if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
       warning(paste0("cutoff lower than 0.18 has been detected for ", basename(file),
                      ", cutoff will be set to 0.18"))
       fileOut <- basename(file)
     }
-    
+
     id <- S4Vectors::metadata(dat)$sep_cutoffs < threshold
     S4Vectors::metadata(dat)$sep_cutoffs[id] <- threshold
-    
+
   } else {
     if(any(S4Vectors::metadata(dat)$sep_cutoffs < threshold)){
       warning(paste0("cutoff lower than ", threshold, " detected for ", basename(file)))
       fileOut <- basename(file)
     }
   }
-  
+
   id <- is.na(S4Vectors::metadata(dat)$sep_cutoffs)
   S4Vectors::metadata(dat)$sep_cutoffs[id] <- 1
-  
+
   if (to_plot){
     p <- CATALYST::plotYields(dat, which = rownames(s_key))
-    
+
     pdf(file.path(out_dir, paste(gsub(".fcs", "_yields.pdf", basename(file)))))
     for (name in names(p)){
       print(p[[name]])
     }
     dev.off()
   }
-  
+
   dat <- CATALYST::applyCutoffs(dat)
-  
+
   if (to_plot){
     p <- CATALYST::plotEvents(dat, n = 500)
-    
+
     pdf(file.path(out_dir, paste(gsub(".fcs", "_debarcode_quality.pdf",
                                       basename(file)))))
     for (name in names(p)){
@@ -1558,19 +1558,19 @@ file_quality_check <- function(fcs_files,
     }
     dev.off()
   }
-  
+
   dat <- dat[, dat$bc_id !=0]
   fs <- CATALYST::sce2fcs(dat, split_by = "bc_id")
-  
+
   tmp_dir <- file.path(out_dir, batch_id)
   if(!dir.exists(tmp_dir)) dir.create(tmp_dir)
-  
+
   file_name <- gsub("_cleaned.fcs|.fcs", "", basename(file))
-  
+
   flowCore::write.flowSet(fs, outdir = tmp_dir,
                           filename = paste0(rownames(fs@phenoData), "_", file_name,
                                             "_debarcoded.fcs"))
-  
+
   return(fileOut)
 }
 
@@ -1580,24 +1580,24 @@ file_quality_check <- function(fcs_files,
 #'
 #' @param fcs_files Character, full path to fcs_files.
 #' @param cores Number of cores to be used
-#' @param file_batch_id Character vector with batch label for each fcs_file, 
-#' the order and the length needs to be the same as in fcs_files. If only batch 
+#' @param file_batch_id Character vector with batch label for each fcs_file,
+#' the order and the length needs to be the same as in fcs_files. If only batch
 #' is processed can be prepared as e.g. file_batch_id <- rep("batch", length(files))
 #' @param file_score Data frame with quality scores obtained from
 #' file_quality_check.Default set to NULL.
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' only if argument to_plot = TRUE, default is set to working directory
-#' @param min_threshold Logical, if the minimal threshold for barcoding 
+#' @param min_threshold Logical, if the minimal threshold for barcoding
 #' should be applied.
 #' @param threshold Numeric, value for the minimum threshold for debarcoding,
 #' default is set to 0.18, only if min_threshold set to TRUE.
-#' @param to_plot Logical, if plots for yields and debarcoding quality should 
+#' @param to_plot Logical, if plots for yields and debarcoding quality should
 #' be plotted.
 #' @param barcodes_used Character vector with the names of the barcodes that were used, eg.
-#' barcode 1 is the same as A1. Or a list with the barcodes name per batch. 
-#' If NULL (default) all the barcodes contained in sample_key will be used, 
+#' barcode 1 is the same as A1. Or a list with the barcodes name per batch.
+#' If NULL (default) all the barcodes contained in sample_key will be used,
 #' regarding the batch.
-#' @param less_than_th Logical, if the name of the files for which lower threshold 
+#' @param less_than_th Logical, if the name of the files for which lower threshold
 #' than set in parameter threshold was detected. Default is set to FALSE.
 #' @param barcode_key matrix as in CATALYST::assignPrelim, the debarcoding scheme.
 #' A binary matrix with sample names as row names and numeric masses as column names
@@ -1609,9 +1609,9 @@ file_quality_check <- function(fcs_files,
 #' to TRUE save plots for yields and debarcode_quality in out_dir. If less_than_th
 #' set to TRUE save file names with lower than the value set in threshold parameter
 #' are saved into file called "files_with_lower_debarcoding_threshold.RDS" in out_dir
-#' 
-#' @examples 
-#' 
+#'
+#' @examples
+#'
 #' # Set input directory
 #'clean_dir <- file.path(dir, "Cleaned")
 #'
@@ -1630,7 +1630,7 @@ file_quality_check <- function(fcs_files,
 #'file_batch_id <- stringr::str_match(basename(files),
 #'                                    "(day[0-9]*).*.fcs")[,2]
 #'
-#'# Read in metadata 
+#'# Read in metadata
 #'md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
 #'
 #'# read in barcode key
@@ -1652,7 +1652,7 @@ file_quality_check <- function(fcs_files,
 #'                file_batch_id = file_batch_id,
 #'                less_than_th = TRUE,
 #'                barcode_key = sample_key)
-#' 
+#'
 #' @export
 debarcode_files <- function(fcs_files,
                             cores = 1,
@@ -1665,15 +1665,15 @@ debarcode_files <- function(fcs_files,
                             barcodes_used = NULL,
                             less_than_th = FALSE,
                             barcode_key = NULL){
-  
+
   if(anyDuplicated(fcs_files) != 0){
     stop("names of fcs files are duplicated")
   }
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
-  
+
   if(!is.null(file_score)){
     if(!inherits(file_score, "data.frame")) {
       stop("file_scores is not a data frame")
@@ -1684,16 +1684,16 @@ debarcode_files <- function(fcs_files,
       fcs_files <- fcs_files_clean
     }
   }
-  
+
    if(length(file_batch_id) != length(fcs_files)){
     stop("the lenght of the file_batch_id is not equal to the lenght of fcs_files")
   }
-  
+
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Debarcoded")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
+
   lessFiles <-  BiocParallel::bplapply(fcs_files, function(file) {
     .debarcode_ind(file,
                    fcs_files = fcs_files,
@@ -1708,7 +1708,7 @@ debarcode_files <- function(fcs_files,
                    barcode_key = barcode_key)
   },
   BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-  
+
   if(less_than_th){
     saveRDS(unlist(lessFiles), file.path(out_dir, "files_with_lower_debarcoding_threshold.RDS"))
   }
@@ -1786,14 +1786,14 @@ debarcode_files <- function(fcs_files,
 #' Deconvolute and aggregate debarcoded files
 #'
 #' @description Performs aggregation of debarcoded files, assigning user defined
-#' name to each file. 
+#' name to each file.
 #'
 #' @param fcs_files Character, full path to the fcs_files.
-#' @param md Metadata. Must contain the following columns: 
-#' batch_column: defines to which batch each file belongs; 
+#' @param md Metadata. Must contain the following columns:
+#' batch_column: defines to which batch each file belongs;
 #' barcode_name: defines to which barcode each file belongs
 #' fcs_new_name: a name for the fcs file that will be given after deconvolution
-#' and aggregation. 
+#' and aggregation.
 #' @param cores Number of cores to be used.
 #' @param channels_to_keep Character vector with channel names to be kept.
 #' Default NULL.
@@ -1803,11 +1803,11 @@ debarcode_files <- function(fcs_files,
 #' files will be saved in out_dir. Default set to TRUE.
 #' @param out_dir Character, pathway to where the files should be saved,
 #' if NULL (default) files will be saved to file.path(getwd(), Aggregated).
-#' 
-#' @return List of the pathways to aggregated files. 
-#' 
-#' @examples 
-#' 
+#'
+#' @return List of the pathways to aggregated files.
+#'
+#' @examples
+#'
 #' # Set input directory
 #' debarcode_dir <- file.path(dir, "Debarcoded")
 
@@ -1834,10 +1834,10 @@ debarcode_files <- function(fcs_files,
 #'                 barcode_column = "barcode_name",
 #'                 batch_column = "BATCH",
 #'                 cores = 1,
-#' 
+#'
 #'                 out_dir = aggregate_dir,
 #'                 write_agg_file = TRUE)
-#' 
+#'
 #' @export
 aggregate_files <- function(fcs_files,
                             md,
@@ -1853,7 +1853,7 @@ aggregate_files <- function(fcs_files,
   if(!is(files, "character") & !is(files, "list")) {
     stop("files must be a character vector or a list")
   }
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -1892,39 +1892,23 @@ aggregate_files <- function(fcs_files,
 
 }
 
-#' gate_intact_cells
-#'
-#' @description Performs gating of intact cells using flowDensity package
-#'
-#' @param flow_frame Character, full path to fcs_file.
-#' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param tinypeak_removal1 numeric from 0-1, as in deGate to exclude/include
-#' tiny peaks in the head of the density distribution curve for both Iridium
-#' channels
-#' @param tinypeak_removal2 the same as tinypeak_removal1 but for the tail
-#' in the density distribution curve
-#' @param alpha1 numeric, 0-1, as in deGate specify the significance of change
-#' in the slope being detected at the head of the density distribution curve
-#' @param alpha2 the same as in alpha1 but for the tail of the density distribution curve
-#' @param arcsine_transform Logical, if the data should be transformed
-#' with arcsine transformation and cofactor 5.
-#' @param ...
-#'
-#' @return flow frame with intact cells
 
-gate_intact_cells <- function(flow_frame,
+
+.gate_intact_cells_ind <- function(file,
                               file_name = NULL,
                               tinypeak_removal1 = 0.8,
                               tinypeak_removal2 = 0.8,
                               alpha1 = 0.05,
                               alpha2 = 0.1,
-                              arcsine_transform = TRUE, ...){
+                              arcsine_transform = TRUE,
+                              ...){
 
-  ff <- flow_frame
+
+  ff <- flowCore::read.FCS(filename = file,
+                           transformation = FALSE)
 
   if (is.null(file_name)){
-    file_name <- ff@description$GUID.original
+    file_name <- ff@description$ORIGINALGUID
   } else {
     file_name
   }
@@ -1971,11 +1955,74 @@ gate_intact_cells <- function(flow_frame,
   abline(v = c(tr[["Ir193Di"]]))
   points(ff_t@exprs[!selection[,"intact"], c("Ir193Di", "Ir191Di")], pch = ".")
 
+  p <- recordPlot()
+
   ff <- ff[selection[,"intact"], ]
 
-  return(ff)
+  return(list(ff, p))
 }
 
+#' gate_intact_cells
+#'
+#' @description Performs gating of intact cells using flowDensity package
+#'
+#' @param files Character, full path to fcs_file.
+#' @param cores Number of cores to be used.
+#' @param file_name Character, the file name used only for plotting, if NULL
+#' the file name stored in keyword GUID.original will be used, default is set to NULL
+#' @param tinypeak_removal1 numeric from 0-1, as in deGate to exclude/include
+#' tiny peaks in the head of the density distribution curve for both Iridium
+#' channels
+#' @param tinypeak_removal2 the same as tinypeak_removal1 but for the tail
+#' in the density distribution curve
+#' @param alpha1 numeric, 0-1, as in deGate specify the significance of change
+#' in the slope being detected at the head of the density distribution curve
+#' @param alpha2 the same as in alpha1 but for the tail of the density distribution curve
+#' @param arcsine_transform Logical, if the data should be transformed
+#' with arcsine transformation and cofactor 5.
+#' @param ...
+#'
+#' @return A list for each file containing the flow_frame and the plot
+gate_intact_cells <- function(files,
+                       cores = 1,
+                       file_name = NULL,
+                       tinypeak_removal1 = 0.8,
+                       tinypeak_removal2 = 0.8,
+                       alpha1 = 0.05,
+                       alpha2 = 0.1,
+                       arcsine_transform = TRUE,
+                       gate_dir = getwd(),
+                       ...) {
+
+  # Check parameters
+  if(!is(files, "character") & !is(files, "list")) {
+    stop("files must be a character vector or a list")
+  }
+
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+  if (!dir.exists(gate_dir)) {
+    dir.create(gate_dir)
+  }
+
+
+  # Parallelized analysis
+  out <-BiocParallel::bplapply(files, function(file) {
+     .gate_intact_cells_ind(file,
+                            file_name = file_name,
+                            tinypeak_removal1 = tinypeak_removal1,
+                            tinypeak_removal2 = tinypeak_removal2,
+                            alpha1 = alpha1,
+                            alpha2 = alpha2,
+                            arcsine_transform = arcsine_transform,
+                            ...)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+
+  return(out)
+
+}
 
 #' remove_mad_outliers
 #'
@@ -2042,25 +2089,15 @@ remove_mad_outliers <- function(flow_frame,
 }
 
 
-#' gate_singlet_cells
-#'
-#' @param flow_frame flow frame
-#' @param channels character, channels name to be used for gating, default is
-#' to Event_length
-#' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5.
-#' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param n_mad numeric, number of MADs to detect outliers
-#' @param ... arguments to pass to plotDens
-#'
-#' @return flow frame with singlets
-gate_singlet_cells <- function(flow_frame,
+
+.gate_singlet_cells_ind <- function(intact,
                                channels = "Event_length",
                                arcsine_transform = TRUE,
                                file_name = NULL,
                                n_mad = 2,
                                ...){
+
+  flow_frame <- intact[[1]]
 
   if (is.null(file_name)){
     file_name <- flow_frame@description$FIL
@@ -2089,43 +2126,69 @@ gate_singlet_cells <- function(flow_frame,
                                                  n_mad = n_mad,
                                                  xlim = c(0, 100), ylim = c(0, 8), ...)
 
+  p <- recordPlot()
+
   flow_frame <- flow_frame[selection[,"singlets"], ]
 
-  return(flow_frame)
+  return(list(flow_frame, list(intact[[2]], p)))
 
 }
 
-#' gate_live_cells
+#' gate_singlet_cells
 #'
-#' @description Performs gating of live cells using flowDensity package
-#'
-#' @param flow_frame Character, full path to fcs_file.
-#' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param viability_channel Character, the channel name used for viability staining
-#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include
-#' tiny peaks in the tail of the density ditribution curve for both viability channel
-#' @param tinypeak_removal_Iridium the same as tinypeak_removal_viablity but for
-#' the head and tail of the density ditribution curve in Iridium channel
-#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change
-#' in the slope of viability channel
-#' @param alpha_Iridium the same as in alpha_viability but for the Iridium
+#' @param intact_out Results from the gate_intact_cells function
+#' @param cores Number of cores to be used.
+#' @param channels character, channels name to be used for gating, default is
+#' to Event_length
 #' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5.
-#' @param ... arguments to pass to plotDens function
+#' @param file_name Character, the file name used only for plotting, if NULL
+#' the file name stored in keyword GUID.original will be used, default is set to NULL
+#' @param n_mad numeric, number of MADs to detect outliers
+#' @param ... arguments to pass to plotDens
 #'
-#' @return flow frame with live cells
+#' @return A list for each file containing the flow_frame and the plots
+gate_singlet_cells <- function(intact_out,
+                              cores = 1,
+                              channels = "Event_length",
+                              arcsine_transform = TRUE,
+                              file_name = NULL,
+                              n_mad = 2,
+                              ...) {
 
-gate_live_cells <- function(flow_frame,
+  # Check parameters
+  if (any(!is(cores, "numeric") | cores < 1)){
+    stop("cores must be a positive number")
+  }
+
+  # Parallelized analysis
+  out <-BiocParallel::bplapply(intact_out, function(intact) {
+    .gate_singlet_cells_ind(intact,
+                            channels = "Event_length",
+                            arcsine_transform = TRUE,
+                            file_name = NULL,
+                            n_mad = 2,
+                            ...)},
+    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+
+  return(out)
+
+}
+
+
+
+.gate_live_cells_ind <- function(singlet,
                             file_name = NULL,
                             viability_channel,
                             tinypeak_removal_viability = 0.8,
                             alpha_viability = 0.1,
                             tinypeak_removal_Iridium = 0.8,
                             alpha_Iridium = 0.05,
-                            arcsine_transform = TRUE, ... ){
+                            arcsine_transform = TRUE,
+                            gate_dir = getwd(),
+                            ... ){
 
-  ff <- flow_frame
+  ff <- singlet[[1]]
 
   if (is.null(file_name)){
     file_name <- ff@description$FIL
@@ -2193,46 +2256,52 @@ gate_live_cells <- function(flow_frame,
 
   points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".")
 
+  p <- recordPlot()
+
   ff <- ff[selection[,"live"], ]
 
-  return(ff)
-
-}
-
-.save_bead_gate <- function(file,
-                            n_plots = 3,
-                            gate_dir = gate_dir){
-
-
-
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
-  ff <- gate_intact_cells(flow_frame = ff,
-                          file_name = basename(file))
-
-  ff <- gate_singlet_cells(flow_frame = ff,
-                           channels = "Event_length",
-                           file_name = basename(file))
-
-  ff <- gate_live_cells(flow_frame = ff,
-                        viability_channel = "Pt195Di")
-
   flowCore::write.FCS(ff, file.path(gate_dir,
-                                    gsub(".fcs", "_gated.fcs", basename(file))))
+                                    gsub(".fcs", "_gated.fcs", file_name)))
+
+  return(list(ff, list(singlet[[2]][[1]], singlet[[2]][[2]], p)))
 
 }
 
+#' gate_live_cells
+#'
+#' @description Performs gating of live cells using flowDensity package
+#'
+#' @param singlet_out Results from the gate_singlet_cells function
+#' @param cores Number of cores to be used.
+#' #' @param file_name Character, the file name used only for plotting, if NULL
+#' the file name stored in keyword GUID.original will be used, default is set to NULL
+#' @param viability_channel Character, the channel name used for viability staining
+#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include
+#' tiny peaks in the tail of the density ditribution curve for both viability channel
+#' @param tinypeak_removal_Iridium the same as tinypeak_removal_viablity but for
+#' the head and tail of the density ditribution curve in Iridium channel
+#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change
+#' in the slope of viability channel
+#' @param alpha_Iridium the same as in alpha_viability but for the Iridium
+#' @param arcsine_transform Logical, if the data should be transformed with
+#' arcsine transformation and cofactor 5.
+#' @param ... arguments to pass to plotDens function
+#'
+#' @return A list for each file containing the flow_frame and the plots
 
-gate_files <- function(files,
-                       cores = 1,
-                       gate_dir = getwd()) {
+gate_live_cells <- function(singlet_out,
+                            cores = 1,
+                            file_name = NULL,
+                            viability_channel,
+                            tinypeak_removal_viability = 0.8,
+                            alpha_viability = 0.1,
+                            tinypeak_removal_Iridium = 0.8,
+                            alpha_Iridium = 0.05,
+                            arcsine_transform = TRUE,
+                            gate_dir = getwd(),
+                            ...) {
 
   # Check parameters
-  if(!is(files, "character") & !is(files, "list")) {
-    stop("files must be a character vector or a list")
-  }
-
   if (any(!is(cores, "numeric") | cores < 1)){
     stop("cores must be a positive number")
   }
@@ -2241,22 +2310,47 @@ gate_files <- function(files,
     dir.create(gate_dir)
   }
 
-  png(file.path(gate_dir, paste0("gating.png")),
-      width = n_plots * 300,
-      height = length(files) * 300)
-  layout(matrix(1:(length(files) * n_plots),
-                ncol = n_plots,
-                byrow = TRUE))
-
-
   # Parallelized analysis
-  BiocParallel::bplapply(files, function(x) {
-    .save_bead_gate(x,
-                    n_plots = 3,
-                    gate_dir = gate_dir)},
+  out <-BiocParallel::bplapply(singlet_out, function(singlet) {
+    .gate_live_cells_ind(singlet,
+                         file_name = file_name,
+                         viability_channel = viability_channel,
+                         tinypeak_removal_viability = tinypeak_removal_viability,
+                         alpha_viability = alpha_viability,
+                         tinypeak_removal_Iridium = tinypeak_removal_Iridium,
+                         alpha_Iridium = alpha_Iridium,
+                         arcsine_transform = arcsine_transform,
+                         gate_dir = gate_dir,
+                         ...)},
+
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
+  return(out)
+
+}
+
+
+plot_gate <- function(live_out,
+                      filename = "gating.png") {
+
+  n_plots <- 3
+
+  allPlots <- lapply(live_out, function(x) {
+    return(list(x[[2]][[1]], x[[2]][[2]], x[[2]][[3]]))
+  })
+
+  allPlots <- unlist(allPlots, recursive = FALSE)
+
+  nRows <- length(live_out) / n_plots
+
+  png(filename,
+      width = n_plots * 300,
+      height = nRows * 300)
+
+  ggpubr::ggarrange(plotlist = allPlots, nrow = nRows, ncol = n_plots)
+
   dev.off()
+
 
 }
 
