@@ -1916,7 +1916,7 @@ aggregate_files <- function(fcs_files,
   if(arcsine_transform == TRUE){
 
     ff_t <- flowCore::transform(ff,
-                                flowCore::transformList(colnames(ff)[grep("Di", colnames(ff))],
+                                flowCore::transformList(flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
                                                         CytoNorm::cytofTransform))
   } else {
     ff_t <- ff
@@ -1955,7 +1955,7 @@ aggregate_files <- function(fcs_files,
   abline(v = c(tr[["Ir193Di"]]))
   points(ff_t@exprs[!selection[,"intact"], c("Ir193Di", "Ir191Di")], pch = ".")
 
-  p <- recordPlot()
+  p <- grDevices::recordPlot()
 
   ff <- ff[selection[,"intact"], ]
 
@@ -2055,8 +2055,8 @@ remove_mad_outliers <- function(flow_frame,
                                        channels))
   for (channel in channels) {
     x <- flow_frame@exprs[, channel]
-    boundaries["median", channel] <- median(x)
-    boundaries["center", channel] <- density(x)$x[which.max(density(x)$y)]
+    boundaries["median", channel] <- stats::median(x)
+    boundaries["center", channel] <- stats::density(x)$x[which.max(stats::density(x)$y)]
     boundaries["mad", channel] <- mad_f(x,
                                         center = boundaries[center, channel] )
     boundaries["l_lim", channel] <- boundaries[center, channel] - n_mad * boundaries["mad", channel]
@@ -2076,12 +2076,12 @@ remove_mad_outliers <- function(flow_frame,
                                                             nsmall = 2), "% )"),
                           ...)
     if(length(channels) == 2) {
-      points(flow_frame@exprs[!selection, channels], col = "red", pch = ".")
-      abline(v = boundaries[c("l_lim", "u_lim"), channels[1]], col = "grey")
-      abline(h = boundaries[c("l_lim", "u_lim"), channels[2]], col = "grey")
+      graphics::points(flow_frame@exprs[!selection, channels], col = "red", pch = ".")
+      graphics::abline(v = boundaries[c("l_lim", "u_lim"), channels[1]], col = "grey")
+      graphics::abline(h = boundaries[c("l_lim", "u_lim"), channels[2]], col = "grey")
     } else if(length(channels) == 1) {
-      points(flow_frame@exprs[!selection, c(channels, "Ir191Di")], pch = ".")
-      abline(v = boundaries[c("l_lim", "u_lim"), channels[1]], col = "grey")
+      graphics::points(flow_frame@exprs[!selection, c(channels, "Ir191Di")], pch = ".")
+      graphics::abline(v = boundaries[c("l_lim", "u_lim"), channels[1]], col = "grey")
     }
   }
 
@@ -2108,7 +2108,7 @@ remove_mad_outliers <- function(flow_frame,
   if(arcsine_transform == TRUE){
 
     flow_frame_t <- flowCore::transform(flow_frame,
-                                        flowCore::transformList(colnames(flow_frame)[grep("Di", colnames(flow_frame))],
+                                        flowCore::transformList(flowCore::colnames(flow_frame)[grep("Di", flowCore::colnames(flow_frame))],
                                                                 CytoNorm::cytofTransform))
   } else {
     flow_frame_t <- flow_frame
@@ -2126,7 +2126,7 @@ remove_mad_outliers <- function(flow_frame,
                                                  n_mad = n_mad,
                                                  xlim = c(0, 100), ylim = c(0, 8), ...)
 
-  p <- recordPlot()
+  p <- grDevices::recordPlot()
 
   flow_frame <- flow_frame[selection[,"singlets"], ]
 
@@ -2199,7 +2199,7 @@ gate_singlet_cells <- function(intact_out,
   if(arcsine_transform == TRUE){
 
     ff_t <- flowCore::transform(ff,
-                                transformList(colnames(ff)[grep("Di", colnames(ff))],
+                                flowCore::transformList(flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
                                               CytoNorm::cytofTransform))
   } else {
     ff_t <- ff
@@ -2212,7 +2212,7 @@ gate_singlet_cells <- function(intact_out,
                                       c("live")))
 
 
-  v_ch <- grep(viability_channel, colnames(ff), value = T)
+  v_ch <- grep(viability_channel, flowCore::colnames(ff), value = T)
 
   tr <- list()
   for(m in c("Ir191Di", v_ch)){
@@ -2251,12 +2251,12 @@ gate_singlet_cells <- function(intact_out,
                         main = paste0(file_name," ( ", format(round(percentage, 2), nsmall = 2), "% )"),
                         xlim = c(0, 8), ylim = c(0, 8), ...)
 
-  abline(h = tr[["Ir191Di"]])
-  abline(v = tr[[v_ch]])
+  graphics::abline(h = tr[["Ir191Di"]])
+  graphics::abline(v = tr[[v_ch]])
 
-  points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".")
+  graphics::points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".")
 
-  p <- recordPlot()
+  p <- grDevices::recordPlot()
 
   ff <- ff[selection[,"live"], ]
 
@@ -2331,7 +2331,8 @@ gate_live_cells <- function(singlet_out,
 
 
 plot_gate <- function(live_out,
-                      filename = "gating.png") {
+                      filename = "gating.png", 
+                      n_plots = 3) {
 
   n_plots <- 3
 
@@ -2341,17 +2342,19 @@ plot_gate <- function(live_out,
 
   allPlots <- unlist(allPlots, recursive = FALSE)
 
-  nRows <- length(live_out) / n_plots
+  nRows <- length(live_out)
 
-  png(filename,
-      width = n_plots * 300,
-      height = nRows * 300)
-
+  # par(mar=c(1, 1, 1, 1))
+  par(mar=c(5.1, 4.1, 4.1, 2.1))
+  # par(mfcol=c(5,3),mai=c(0.5,0.5,0.5,0))
+  grDevices::png(filename,
+                 width = n_plots * 3,
+                 height = nRows * 3)
+ 
   ggpubr::ggarrange(plotlist = allPlots, nrow = nRows, ncol = n_plots)
-
+  
   dev.off()
-
-
+  
 }
 
 .plot_batch_ind <- function(name,
@@ -2376,7 +2379,7 @@ plot_gate <- function(live_out,
                                                CytoNorm::cytofTransform))
   }
 
-  markers <- FlowSOM::GetMarkers(ff_agg, colnames(ff_agg))
+  markers <- FlowSOM::GetMarkers(ff_agg, flowCore::colnames(ff_agg))
 
   cl_markers <- paste(clustering_markers, collapse="|")
   cl_markers <- grep(cl_markers, markers, value = T)

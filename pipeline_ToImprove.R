@@ -238,7 +238,7 @@ res3 <- gate_live_cells(res2,
                         viability_channel = "Pt195Di",
                         gate_dir = gate_dir)
 
-plot_gate(res3, "Gated/gating.png")
+plot_gate(live_out = res3, filename = file.path(gate_dir, "gating.png"))
 
 
 # ------------------------------------------------------------------------------
