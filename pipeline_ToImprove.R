@@ -148,7 +148,7 @@ file_scores <- readRDS(list.files(path = dir,
 file_batch_id <- stringr::str_match(basename(files),
                                     "(day[0-9]*).*.fcs")[,2]
 
-# Read in metadata 
+# Read in metadata
 md <- utils::read.csv(file.path(dir, "RawFiles", "meta_data.csv"))
 
 # read in barcode key
@@ -231,7 +231,15 @@ files <- list.files(path = aggregate_dir,
                     full.names = TRUE)
 
 # Gate the files and plot the gating strategy for each file
-gate_files(files, cores = 1, gate_dir = gate_dir)
+res1 <- gate_intact_cells(files)
+res2 <- gate_singlet_cells(res1,
+                           channels = "Event_length",)
+res3 <- gate_live_cells(res2,
+                        viability_channel = "Pt195Di",
+                        gate_dir = gate_dir)
+
+plot_gate(res3, "Gated/gating.png")
+
 
 # ------------------------------------------------------------------------------
 # Normalization using reference sample -----------------------------------------
