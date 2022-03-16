@@ -2278,8 +2278,8 @@ gate_files <- function(files,
 
   if (arcsine_transform == TRUE){
     ff_agg <- flowCore::transform(ff_agg,
-                                  transformList(grep("Di", colnames(ff_agg), value = TRUE),
-                                                cytofTransform))
+                                  flowCore::transformList(grep("Di", flowCore::colnames(ff_agg), value = TRUE),
+                                               CytoNorm::cytofTransform))
   }
 
   markers <- FlowSOM::GetMarkers(ff_agg, colnames(ff_agg))
@@ -2289,7 +2289,7 @@ gate_files <- function(files,
 
   ff_agg@exprs[, names(cl_markers)] <- apply(ff_agg@exprs[, names(cl_markers)],
                                              2, function(x){
-                                               q <- quantile(x, 0.9999)
+                                               q <- stats::quantile(x, 0.9999)
                                                x[x > q] <- q
                                                x
                                              })
