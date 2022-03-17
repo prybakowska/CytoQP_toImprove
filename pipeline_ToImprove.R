@@ -210,12 +210,6 @@ aggregate_files(fcs_files = files,
 # Set input directory 
 aggregate_dir <- file.path(dir, "Aggregated")
 
-# Set output directory 
-gate_dir <- file.path(dir, "Gated")
-if (!dir.exists(gate_dir)) { 
-  dir.create(gate_dir)
-}
-
 # List files for gating 
 files <- list.files(path = aggregate_dir, 
                     pattern = ".fcs$", 
@@ -223,12 +217,9 @@ files <- list.files(path = aggregate_dir,
 
 # Gate the files and plot the gating strategy for each file 
 n_plots <- 3  
-png(file.path(gate_dir, paste0("gating.png")),
-    width = n_plots * 300, 
-    height = length(files) * 300)
-layout(matrix(1:(length(files) * n_plots), 
-              ncol = n_plots, 
-              byrow = TRUE))
+png(file.path(gate_dir, paste0("gating.png")), 
+    width = n_plots * 300, height = length(files) * 300)
+layout(matrix(1:(length(files) * n_plots), ncol = n_plots, byrow = TRUE))
 
 for (file in files){
   
