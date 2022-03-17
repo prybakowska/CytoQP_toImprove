@@ -207,39 +207,47 @@ aggregate_files(fcs_files = files,
 # Files gating -----------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-# If Gaussian parameters needs to be gated use cytofclean, remember
-# to de-select beads removal and change input directory in step "List files for gating"
-# to cytof_clean_dir. In this case skip also the gating for gate_singlet_cells
-# if Gaussian gating is not required proceed to step "Set input directory" and follow
-# the pipeline
-
-# cytofclean::cytofclean_GUI()
-
-# Set input directory if gating for Gaussian parameters
-# cytof_clean_dir <- file.path(dir, "Aggregated", "CyTOFClean")
-# or
-
-# Set input directory
+# Set input directory 
 aggregate_dir <- file.path(dir, "Aggregated")
 
-# Set output directory
+# Set output directory 
 gate_dir <- file.path(dir, "Gated")
+if (!dir.exists(gate_dir)) { 
+  dir.create(gate_dir)
+}
 
-# List files for gating
-files <- list.files(path = aggregate_dir,
-                    pattern = ".fcs$",
+# List files for gating 
+files <- list.files(path = aggregate_dir, 
+                    pattern = ".fcs$", 
                     full.names = TRUE)
 
-# Gate the files and plot the gating strategy for each file
-res1 <- gate_intact_cells(files)
-res2 <- gate_singlet_cells(res1,
-                           channels = "Event_length",)
-res3 <- gate_live_cells(res2,
-                        viability_channel = "Pt195Di",
-                        gate_dir = gate_dir)
+# Gate the files and plot the gating strategy for each file 
+n_plots <- 3  
+png(file.path(gate_dir, paste0("gating.png")),
+    width = n_plots * 300, 
+    height = length(files) * 300)
+layout(matrix(1:(length(files) * n_plots), 
+              ncol = n_plots, 
+              byrow = TRUE))
 
-plot_gate(live_out = res3, filename = file.path(gate_dir, "gating.png"))
+for (file in files){
+  
+  ff <- flowCore::read.FCS(filename = file, 
+                           transformation = FALSE)
+  
+  ff <- gate_intact_cells(flow_frame = ff, 
+                          file_name = basename(file), save_gated_flow_frame = FALSE)
+  
+  ff <- gate_singlet_cells(flow_frame = ff,
+                           channels = "Event_length",
+                           file_name = basename(file), save_gated_flow_frame = FALSE)
+  
+  ff <- gate_live_cells(flow_frame = ff, 
+                        viability_channel = "Pt195Di", save_gated_flow_frame = TRUE, 
+                        file_name = basename(file), suffix = "_gated")
+}
 
+dev.off()
 
 # ------------------------------------------------------------------------------
 # Normalization using reference sample -----------------------------------------
@@ -258,9 +266,9 @@ files_ref <- list.files(gate_dir,
 labels_ref <- stringr::str_match(basename(files_ref),
                                    ".*_(day[0-9]*).*.fcs")[,2]
 # Define channels to be normalized
-ff <- read.FCS(files_ref[1])
+ff <- flowCore::read.FCS(files_ref[1])
 channels <- grep("Pd|Rh|140",
-                 grep("Di", colnames(ff),
+                 grep("Di", flowCore::colnames(ff),
                       value = T),
                  value = T, invert = T)
 
@@ -275,7 +283,7 @@ png(file.path(norm_dir, "005_095_normalization.png"),
 model <- CytoNorm::QuantileNorm.train(files = files_ref,
                                       labels = labels_ref,
                                       channels = channels,
-                                      transformList = transformList(channels,
+                                      transformList = flowCore::transformList(channels,
                                                                     CytoNorm::cytofTransform),
                                       nQ = 2,
                                       limit = c(0,8),
@@ -302,9 +310,9 @@ labels <- stringr::str_match(basename(files),
 CytoNorm::QuantileNorm.normalize(model = model,
                                  files = files,
                                  labels = labels,
-                                 transformList = transformList(channels,
+                                 transformList = flowCore::transformList(channels,
                                                                CytoNorm::cytofTransform),
-                                 transformList.reverse = transformList(channels,
+                                 transformList.reverse = flowCore::transformList(channels,
                                                                        CytoNorm::cytofTransform.reverse),
                                  outputDir = norm_dir)
 
@@ -321,7 +329,7 @@ gate_dir <- file.path(dir, "Gated")
 files_before_norm <- list.files(gate_dir,
                                 pattern = ".fcs",
                                 full.names = T)
-batch <- str_match(files_before_norm, "day[0-9]*")[,1]
+batch <- stringr::str_match(files_before_norm, "day[0-9]*")[,1]
 files_before_norm <- files_before_norm[order(factor(batch))]
 
 # Define files after normalization and order them according to the batch

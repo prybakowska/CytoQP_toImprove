@@ -1893,44 +1893,79 @@ aggregate_files <- function(fcs_files,
 }
 
 
-
-.gate_intact_cells_ind <- function(file,
+#' Gate intact cells
+#'
+#' @description Performs gating of intact cells using flowDensity package.
+#'
+#' @param flow_frame A flowframe that contains cytometry data.
+#' @param file_name Character, the file name used for saving the flow frame 
+#' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
+#' the file name stored in keyword FIL will be used, 
+#' default is set to NULL.
+#' @param tinypeak_removal1 Numeric from 0-1, as in deGate to exclude/include
+#' tiny peaks in the head of the density distribution curve for both Iridium
+#' channels.
+#' @param tinypeak_removal2 The same as tinypeak_removal1 but for the tail
+#' in the density distribution curve.
+#' @param alpha1 Numeric, 0-1, as in deGate specify the significance of change
+#' in the slope being detected at the head of the density distribution curve.
+#' @param alpha2 The same as in alpha1 but for the tail of the density 
+#' distribution curve.
+#' @param arcsine_transform Logical, if the data should be transformed
+#' with arcsine transformation and cofactor 5. If FALSE the data won't be 
+#' transformed, thus transformed flow frame should be used if needed. 
+#' Default TRUE. 
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' Only cells falling into intact cell region will be saved. Default set to FALSE.
+#' @param suffix Character, suffix placed in the name of saved fcs file, only 
+#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".  
+#' @param out_dir Character, pathway to where the files should be saved,
+#' if NULL (default) files will be saved to file.path(getwd(), Gated).
+#' @param ...
+#' 
+#' @return An untransformed flow frame with intact cells only
+gate_intact_cells <- function(flow_frame,
                               file_name = NULL,
                               tinypeak_removal1 = 0.8,
                               tinypeak_removal2 = 0.8,
                               alpha1 = 0.05,
                               alpha2 = 0.1,
                               arcsine_transform = TRUE,
+                              save_gated_flow_frame = FALSE,
+                              out_dir = NULL,
+                              suffix = "_intact_gated",
                               ...){
-
-
-  ff <- flowCore::read.FCS(filename = file,
-                           transformation = FALSE)
-
+  
+  # Check parameters
+  if(!is(flow_frame, "flowFrame")) {
+    stop("flow_frame must be a flow frame" )
+  }
+  
   if (is.null(file_name)){
-    file_name <- ff@description$ORIGINALGUID
+    file_name <- ff@description$FIL
   } else {
     file_name
   }
-
+  
   if(arcsine_transform == TRUE){
-
+    
     ff_t <- flowCore::transform(ff,
-                                flowCore::transformList(flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
-                                                        CytoNorm::cytofTransform))
+                                flowCore::transformList(
+                                  flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
+                                  CytoNorm::cytofTransform))
   } else {
     ff_t <- ff
   }
-
+  
   selection <- matrix(TRUE,
                       nrow = nrow(ff),
                       ncol = 1,
                       dimnames = list(NULL,
                                       c("intact")))
-
+  
   tr <- list()
   for(m in c("Ir193Di", "Ir191Di")){
-
+    
     tr[[m]] <- c(flowDensity::deGate(ff_t, m,
                                      tinypeak.removal = tinypeak_removal1,
                                      upper = FALSE, use.upper = TRUE,
@@ -1940,88 +1975,44 @@ aggregate_files <- function(fcs_files,
                                      upper = TRUE, use.upper = TRUE,
                                      alpha = alpha2, verbose = F, count.lim = 3, ...))
   }
-
+  
   for(m in c("Ir193Di", "Ir191Di")){
     selection[ff_t@exprs[,m] < tr[[m]][1], "intact"] <- FALSE
     selection[ff_t@exprs[,m] > tr[[m]][2], "intact"] <- FALSE
   }
-
+  
   percentage <- (sum(selection)/length(selection))*100
   flowDensity::plotDens(ff_t, c("Ir193Di", "Ir191Di"),
                         main = paste0(basename(file_name)," ( ", format(round(percentage, 2),
                                                                         nsmall = 2), "% )"))
-
-  abline(h = c(tr[["Ir191Di"]]))
-  abline(v = c(tr[["Ir193Di"]]))
-  points(ff_t@exprs[!selection[,"intact"], c("Ir193Di", "Ir191Di")], pch = ".")
-
-  p <- grDevices::recordPlot()
-
+  
+  graphics::abline(h = c(tr[["Ir191Di"]]))
+  graphics::abline(v = c(tr[["Ir193Di"]]))
+  graphics::points(ff_t@exprs[!selection[,"intact"], c("Ir193Di", "Ir191Di")], pch = ".")
+  
   ff <- ff[selection[,"intact"], ]
+  
+  if(save_gated_flow_frame){
+    
+    .save_flowframe(ff, out_dir, suffix, file_name)
+  }
 
-  return(list(ff, p))
+  return(ff)
 }
 
-#' gate_intact_cells
-#'
-#' @description Performs gating of intact cells using flowDensity package
-#'
-#' @param files Character, full path to fcs_file.
-#' @param cores Number of cores to be used.
-#' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param tinypeak_removal1 numeric from 0-1, as in deGate to exclude/include
-#' tiny peaks in the head of the density distribution curve for both Iridium
-#' channels
-#' @param tinypeak_removal2 the same as tinypeak_removal1 but for the tail
-#' in the density distribution curve
-#' @param alpha1 numeric, 0-1, as in deGate specify the significance of change
-#' in the slope being detected at the head of the density distribution curve
-#' @param alpha2 the same as in alpha1 but for the tail of the density distribution curve
-#' @param arcsine_transform Logical, if the data should be transformed
-#' with arcsine transformation and cofactor 5.
-#' @param ...
-#'
-#' @return A list for each file containing the flow_frame and the plot
-gate_intact_cells <- function(files,
-                       cores = 1,
-                       file_name = NULL,
-                       tinypeak_removal1 = 0.8,
-                       tinypeak_removal2 = 0.8,
-                       alpha1 = 0.05,
-                       alpha2 = 0.1,
-                       arcsine_transform = TRUE,
-                       gate_dir = getwd(),
-                       ...) {
 
-  # Check parameters
-  if(!is(files, "character") & !is(files, "list")) {
-    stop("files must be a character vector or a list")
+.save_flowframe <- function(flow_frame,
+                            out_dir, 
+                            suffix,
+                            file_name){
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "Gated")
   }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  fname <- gsub(pattern = ".fcs", replacement = paste0(suffix, ".fcs"), 
+                x = file_name, ignore.case = TRUE)
 
-  if (any(!is(cores, "numeric") | cores < 1)){
-    stop("cores must be a positive number")
-  }
-
-  if (!dir.exists(gate_dir)) {
-    dir.create(gate_dir)
-  }
-
-
-  # Parallelized analysis
-  out <-BiocParallel::bplapply(files, function(file) {
-     .gate_intact_cells_ind(file,
-                            file_name = file_name,
-                            tinypeak_removal1 = tinypeak_removal1,
-                            tinypeak_removal2 = tinypeak_removal2,
-                            alpha1 = alpha1,
-                            alpha2 = alpha2,
-                            arcsine_transform = arcsine_transform,
-                            ...)},
-    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-
-  return(out)
-
+  flowCore::write.FCS(x = flow_frame, filename = file.path(out_dir, fname))
 }
 
 #' remove_mad_outliers
@@ -2089,95 +2080,113 @@ remove_mad_outliers <- function(flow_frame,
 }
 
 
-
-.gate_singlet_cells_ind <- function(intact,
-                               channels = "Event_length",
+#' Gate singlet cells 
+#'
+#' @param flow_frame A flowframe that contains cytometry data.
+#' @param file_name Character, the file name used for saving the flow frame 
+#' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
+#' the file name stored in keyword FIL will be used, 
+#' default is set to NULL.
+#' @param channels character, channels name to be used for gating, default is 
+#' to Event_length
+#' @param n_mad numeric, number of MADs to detect outliers
+#' @param arcsine_transform Logical, if the data should be transformed
+#' with arcsine transformation and cofactor 5. If FALSE the data won't be 
+#' transformed, thus transformed flow frame should be used if needed. 
+#' Default TRUE. 
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' Only cells falling into intact cell region will be saved. Default set to FALSE.
+#' @param suffix Character, suffix placed in the name of saved fcs file, only 
+#' if save_gated_flow_frame = TRUE. Defult is "_singlets_gated". 
+#' @param out_dir Character, pathway to where the files should be saved,
+#' if NULL (default) files will be saved to file.path(getwd(), Gated).
+#' @param ... arguments to pass to plotDens
+#'
+#' @return An untransformed flow frame with singlets only
+gate_singlet_cells <- function(flow_frame, 
+                               file_name = NULL, 
+                               channels = "Event_length", 
                                arcsine_transform = TRUE,
-                               file_name = NULL,
+                               save_gated_flow_frame = NULL,
+                               suffix = "_singlets_gated",
                                n_mad = 2,
+                               out_dir = NULL,
                                ...){
-
-  flow_frame <- intact[[1]]
-
+  
+  # Check parameters
+  if(!is(flow_frame, "flowFrame")) {
+    stop("flow_frame must be a flow frame" )
+  }
+  
   if (is.null(file_name)){
     file_name <- flow_frame@description$FIL
   } else {
-    file_name
+    file_name 
   }
-
+  
   if(arcsine_transform == TRUE){
-
-    flow_frame_t <- flowCore::transform(flow_frame,
-                                        flowCore::transformList(flowCore::colnames(flow_frame)[grep("Di", flowCore::colnames(flow_frame))],
+    
+    flow_frame_t <- flowCore::transform(flow_frame, 
+                                        flowCore::transformList(
+                                          flowCore::colnames(flow_frame)[grep("Di", flowCore::colnames(flow_frame))], 
                                                                 CytoNorm::cytofTransform))
   } else {
     flow_frame_t <- flow_frame
   }
-
+  
   selection <- matrix(TRUE,
                       nrow = nrow(flow_frame),
                       ncol = 1,
                       dimnames = list(NULL,
-                                      c("singlets")))
-
-  selection[, "singlets"] <- remove_mad_outliers(flow_frame = flow_frame_t,
+                                      c("singlets")))  
+  
+  selection[, "singlets"] <- remove_mad_outliers(flow_frame = flow_frame_t, 
                                                  channels = channels,
                                                  main = paste("Singlets", file_name),
                                                  n_mad = n_mad,
                                                  xlim = c(0, 100), ylim = c(0, 8), ...)
-
-  p <- grDevices::recordPlot()
-
+  
   flow_frame <- flow_frame[selection[,"singlets"], ]
-
-  return(list(flow_frame, list(intact[[2]], p)))
-
-}
-
-#' gate_singlet_cells
-#'
-#' @param intact_out Results from the gate_intact_cells function
-#' @param cores Number of cores to be used.
-#' @param channels character, channels name to be used for gating, default is
-#' to Event_length
-#' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5.
-#' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param n_mad numeric, number of MADs to detect outliers
-#' @param ... arguments to pass to plotDens
-#'
-#' @return A list for each file containing the flow_frame and the plots
-gate_singlet_cells <- function(intact_out,
-                              cores = 1,
-                              channels = "Event_length",
-                              arcsine_transform = TRUE,
-                              file_name = NULL,
-                              n_mad = 2,
-                              ...) {
-
-  # Check parameters
-  if (any(!is(cores, "numeric") | cores < 1)){
-    stop("cores must be a positive number")
+  
+  if(save_gated_flow_frame){
+    
+    .save_flowframe(flow_frame, out_dir, suffix, file_name)
   }
-
-  # Parallelized analysis
-  out <-BiocParallel::bplapply(intact_out, function(intact) {
-    .gate_singlet_cells_ind(intact,
-                            channels = "Event_length",
-                            arcsine_transform = TRUE,
-                            file_name = NULL,
-                            n_mad = 2,
-                            ...)},
-    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
-
-  return(out)
-
+  
+  return(flow_frame)
+  
 }
 
+#' Gate live cells 
+#' 
+#' @description Performs gating of live cells using flowDensity package
+#' 
+#' @param flow_frame A flowframe that contains cytometry data.
+#' @param file_name Character, the file name used for saving the flow frame 
+#' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
+#' the file name stored in keyword FIL will be used, 
+#' default is set to NULL.
+#' @param viability_channel Character, the channel name used for viability staining
+#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include 
+#' tiny peaks in the tail of the density ditribution curve for both viability channel 
+#' @param tinypeak_removal_Iridium the same as tinypeak_removal_viablity but for
+#' the head and tail of the density ditribution curve in Iridium channel
+#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change 
+#' in the slope of viability channel
+#' @param alpha_Iridium the same as in alpha_viability but for the Iridium
+#' @param arcsine_transform Logical, if the data should be transformed with 
+#' arcsine transformation and cofactor 5.
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' Only cells falling into intact cell region will be saved. Default set to FALSE.
+#' @param suffix Character, suffix placed in the name of saved fcs file, only 
+#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".  
+#' @param out_dir Character, pathway to where the files should be saved,
+#' if NULL (default) files will be saved to file.path(getwd(), Gated).
+#' @param ... arguments to pass to flowDensity::plotDens()
+#' 
+#' @return An untransformed flow frame with live cells only
 
-
-.gate_live_cells_ind <- function(singlet,
+gate_live_cells <- function(flow_frame, 
                             file_name = NULL,
                             viability_channel,
                             tinypeak_removal_viability = 0.8,
@@ -2185,149 +2194,110 @@ gate_singlet_cells <- function(intact_out,
                             tinypeak_removal_Iridium = 0.8,
                             alpha_Iridium = 0.05,
                             arcsine_transform = TRUE,
-                            gate_dir = getwd(),
-                            ... ){
-
-  ff <- singlet[[1]]
-
+                            save_gated_flow_frame = FALSE,
+                            suffix = "_live_gated",
+                            out_dir = NULL,... ){
+  
+  # Check parameters
+  if(!is(flow_frame, "flowFrame")) {
+    stop("flow_frame must be a flow frame" )
+  }
+  
+  ff <- flow_frame
+  
   if (is.null(file_name)){
     file_name <- ff@description$FIL
   } else {
-    file_name
+    file_name 
   }
-
+  
   if(arcsine_transform == TRUE){
-
-    ff_t <- flowCore::transform(ff,
-                                flowCore::transformList(flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
+    
+    ff_t <- flowCore::transform(ff, 
+                                flowCore::transformList( flowCore::colnames(ff)[grep("Di",  flowCore::colnames(ff))], 
                                               CytoNorm::cytofTransform))
   } else {
     ff_t <- ff
   }
-
+  
   selection <- matrix(TRUE,
                       nrow = nrow(ff),
                       ncol = 1,
                       dimnames = list(NULL,
                                       c("live")))
-
-
-  v_ch <- grep(viability_channel, flowCore::colnames(ff), value = T)
-
+  
+  
+  v_ch <- grep(viability_channel,  flowCore::colnames(ff), value = T)
+  
   tr <- list()
   for(m in c("Ir191Di", v_ch)){
     if (m == v_ch) {
       upper = TRUE
       alpha = alpha_viability
       tr[[m]] <- flowDensity::deGate(ff_t, m,
-                                     tinypeak.removal = tinypeak_removal_viability,
+                                     tinypeak.removal = tinypeak_removal_viability, 
                                      upper = upper, use.upper = TRUE,
                                      alpha = alpha, verbose = F, count.lim = 3)
-
+      
     } else {
       alpha = alpha_Iridium
       tr[[m]] <- c(flowDensity::deGate(ff_t, m,
-                                       tinypeak.removal = tinypeak_removal_Iridium,
+                                       tinypeak.removal = tinypeak_removal_Iridium, 
                                        upper = FALSE, use.upper = TRUE,
-                                       alpha = alpha,  verbose = F, count.lim = 3),
+                                       alpha = alpha,  verbose = F, count.lim = 3), 
                    flowDensity::deGate(ff_t, m,
-                                       tinypeak.removal = tinypeak_removal_Iridium,
+                                       tinypeak.removal = tinypeak_removal_Iridium, 
                                        upper = TRUE, use.upper = TRUE,
-                                       alpha = alpha, verbose = F, count.lim = 3))
-
+                                       alpha = alpha, verbose = F, count.lim = 3)) 
+      
     }
   }
-
+  
   for(m in c(v_ch, "Ir191Di")){
     if (m == v_ch) {
-      selection[ff_t@exprs[,m] > tr[[m]][1], "live"] <- FALSE
+      selection[ff_t@exprs[,m] > tr[[m]][1], "live"] <- FALSE 
     } else {
       selection[ff_t@exprs[,m] < tr[[m]][1], "live"] <- FALSE
-      selection[ff_t@exprs[,m] > tr[[m]][2], "live"] <- FALSE
+      selection[ff_t@exprs[,m] > tr[[m]][2], "live"] <- FALSE  
     }
   }
   percentage <- (sum(selection)/length(selection))*100
-  flowDensity::plotDens(ff_t, c(v_ch, "Ir191Di"),
-                        main = paste0(file_name," ( ", format(round(percentage, 2), nsmall = 2), "% )"),
+  flowDensity::plotDens(ff_t, c(v_ch, "Ir191Di"), 
+                        main = paste0(file_name," ( ", format(round(percentage, 2), 
+                                                              nsmall = 2), "% )"),
                         xlim = c(0, 8), ylim = c(0, 8), ...)
-
+  
   graphics::abline(h = tr[["Ir191Di"]])
   graphics::abline(v = tr[[v_ch]])
-
-  graphics::points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".")
-
-  p <- grDevices::recordPlot()
-
+  
+  graphics::points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".") 
+  
   ff <- ff[selection[,"live"], ]
-
-  flowCore::write.FCS(ff, file.path(gate_dir,
-                                    gsub(".fcs", "_gated.fcs", file_name)))
-
-  return(list(ff, list(singlet[[2]][[1]], singlet[[2]][[2]], p)))
-
+  
+  if(save_gated_flow_frame){
+    
+    .save_flowframe(flow_frame, out_dir, suffix, file_name)
+  }
+  
+  return(ff)
+  
 }
 
-#' gate_live_cells
-#'
-#' @description Performs gating of live cells using flowDensity package
-#'
-#' @param singlet_out Results from the gate_singlet_cells function
-#' @param cores Number of cores to be used.
-#' #' @param file_name Character, the file name used only for plotting, if NULL
-#' the file name stored in keyword GUID.original will be used, default is set to NULL
-#' @param viability_channel Character, the channel name used for viability staining
-#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include
-#' tiny peaks in the tail of the density ditribution curve for both viability channel
-#' @param tinypeak_removal_Iridium the same as tinypeak_removal_viablity but for
-#' the head and tail of the density ditribution curve in Iridium channel
-#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change
-#' in the slope of viability channel
-#' @param alpha_Iridium the same as in alpha_viability but for the Iridium
-#' @param arcsine_transform Logical, if the data should be transformed with
-#' arcsine transformation and cofactor 5.
-#' @param ... arguments to pass to plotDens function
-#'
-#' @return A list for each file containing the flow_frame and the plots
 
-gate_live_cells <- function(singlet_out,
-                            cores = 1,
-                            file_name = NULL,
-                            viability_channel,
-                            tinypeak_removal_viability = 0.8,
-                            alpha_viability = 0.1,
-                            tinypeak_removal_Iridium = 0.8,
-                            alpha_Iridium = 0.05,
-                            arcsine_transform = TRUE,
-                            gate_dir = getwd(),
-                            ...) {
 
-  # Check parameters
-  if (any(!is(cores, "numeric") | cores < 1)){
-    stop("cores must be a positive number")
-  }
 
-  if (!dir.exists(gate_dir)) {
-    dir.create(gate_dir)
-  }
 
-  # Parallelized analysis
-  out <-BiocParallel::bplapply(singlet_out, function(singlet) {
-    .gate_live_cells_ind(singlet,
-                         file_name = file_name,
-                         viability_channel = viability_channel,
-                         tinypeak_removal_viability = tinypeak_removal_viability,
-                         alpha_viability = alpha_viability,
-                         tinypeak_removal_Iridium = tinypeak_removal_Iridium,
-                         alpha_Iridium = alpha_Iridium,
-                         arcsine_transform = arcsine_transform,
-                         gate_dir = gate_dir,
-                         ...)},
 
-    BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
-  return(out)
 
-}
+
+
+
+
+
+
+
+
 
 
 plot_gate <- function(live_out,
