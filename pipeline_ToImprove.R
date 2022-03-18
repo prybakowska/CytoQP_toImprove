@@ -243,7 +243,7 @@ dev.off()
 # ------------------------------------------------------------------------------
 # Normalization using reference sample -----------------------------------------
 #-------------------------------------------------------------------------------
-
+library(CytoNorm)
 # Set input directory
 gate_dir <- file.path(dir, "Gated")
 
@@ -310,9 +310,6 @@ CytoNorm::QuantileNorm.normalize(model = model,
 # ------------------------------------------------------------------------------
 # Plot batch effect ------------------------------------------------------------
 #-------------------------------------------------------------------------------
-
-# Define batch pattern
-batch_pattern <- "day[0-9]*"
 
 # Define files before normalization and order them according to the batch
 # Set input directory for files before CytoNorm normalization

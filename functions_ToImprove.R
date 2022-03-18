@@ -1898,38 +1898,37 @@ aggregate_files <- function(fcs_files,
 #' @description Performs gating of intact cells using flowDensity package.
 #'
 #' @param flow_frame A flowframe that contains cytometry data.
-#' @param file_name Character, the file name used for saving the flow frame 
-#' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
-#' the file name stored in keyword FIL will be used, 
-#' default is set to NULL.
-#' @param tinypeak_removal1 Numeric from 0-1, as in deGate to exclude/include
+#' @param file_name Character, the file name used for saving the flow frame
+#' (if save_gated_flow_frame = TRUE) and for plotting, if NULL (default)
+#' the file name stored in keyword FIL will be used.
+#' @param tinypeak_removal_head Numeric from 0-1, as in deGate to exclude/include
 #' tiny peaks in the head of the density distribution curve for both Iridium
 #' channels.
-#' @param tinypeak_removal2 The same as tinypeak_removal1 but for the tail
+#' @param tinypeak_removal_tail The same as tinypeak_removal1 but for the tail
 #' in the density distribution curve.
-#' @param alpha1 Numeric, 0-1, as in deGate specify the significance of change
+#' @param alpha_head Numeric, 0-1, as in deGate specify the significance of change
 #' in the slope being detected at the head of the density distribution curve.
-#' @param alpha2 The same as in alpha1 but for the tail of the density 
+#' @param alpha_tail The same as in alpha1 but for the tail of the density
 #' distribution curve.
 #' @param arcsine_transform Logical, if the data should be transformed
-#' with arcsine transformation and cofactor 5. If FALSE the data won't be 
-#' transformed, thus transformed flow frame should be used if needed. 
-#' Default TRUE. 
-#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' with arcsine transformation and cofactor 5. If FALSE the data won't be
+#' transformed, thus transformed flow frame should be used if needed.
+#' Default TRUE.
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved.
 #' Only cells falling into intact cell region will be saved. Default set to FALSE.
-#' @param suffix Character, suffix placed in the name of saved fcs file, only 
-#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".  
+#' @param suffix Character, suffix placed in the name of saved fcs file, only
+#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".
 #' @param out_dir Character, pathway to where the files should be saved,
 #' if NULL (default) files will be saved to file.path(getwd(), Gated).
-#' @param ...
-#' 
+#' @param ... Additional parameters to pass to flowDensity::deGate()
+#'
 #' @return An untransformed flow frame with intact cells only
 gate_intact_cells <- function(flow_frame,
                               file_name = NULL,
-                              tinypeak_removal1 = 0.8,
-                              tinypeak_removal2 = 0.8,
-                              alpha1 = 0.05,
-                              alpha2 = 0.1,
+                              tinypeak_removal_head = 0.8,
+                              tinypeak_removal_tail = 0.8,
+                              alpha_head = 0.05,
+                              alpha_tail = 0.1,
                               arcsine_transform = TRUE,
                               save_gated_flow_frame = FALSE,
                               out_dir = NULL,
@@ -1967,13 +1966,13 @@ gate_intact_cells <- function(flow_frame,
   for(m in c("Ir193Di", "Ir191Di")){
     
     tr[[m]] <- c(flowDensity::deGate(ff_t, m,
-                                     tinypeak.removal = tinypeak_removal1,
+                                     tinypeak.removal = tinypeak_removal_head,
                                      upper = FALSE, use.upper = TRUE,
-                                     alpha = alpha1, verbose = F, count.lim = 3, ...),
+                                     alpha = alpha_head, verbose = F, count.lim = 3, ...),
                  flowDensity::deGate(ff_t, m,
-                                     tinypeak.removal = tinypeak_removal2,
+                                     tinypeak.removal = tinypeak_removal_tail,
                                      upper = TRUE, use.upper = TRUE,
-                                     alpha = alpha2, verbose = F, count.lim = 3, ...))
+                                     alpha = alpha_tail, verbose = F, count.lim = 3, ...))
   }
   
   for(m in c("Ir193Di", "Ir191Di")){
@@ -1996,7 +1995,7 @@ gate_intact_cells <- function(flow_frame,
     
     .save_flowframe(ff, out_dir, suffix, file_name)
   }
-
+  
   return(ff)
 }
 
@@ -2031,7 +2030,7 @@ gate_intact_cells <- function(flow_frame,
 #' @param ... other arguments to pass plotDens
 #'
 #' @return matrix with the selected cells
-remove_mad_outliers <- function(flow_frame,
+.remove_mad_outliers <- function(flow_frame,
                                 channels = "Event_length",
                                 n_mad = 2,
                                 mad_f = mad,
@@ -2140,7 +2139,7 @@ gate_singlet_cells <- function(flow_frame,
                       dimnames = list(NULL,
                                       c("singlets")))  
   
-  selection[, "singlets"] <- remove_mad_outliers(flow_frame = flow_frame_t, 
+  selection[, "singlets"] <- .remove_mad_outliers(flow_frame = flow_frame_t, 
                                                  channels = channels,
                                                  main = paste("Singlets", file_name),
                                                  n_mad = n_mad,
@@ -2782,10 +2781,10 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
                         ncol = nClus,
                         dimnames = list(basename(file_list[[f]]), 1:nClus))
     mfi_cl_names <- apply(expand.grid(paste0("Cl", seq_len(fsom$map$nNodes)),
-                                      FlowSOM::GetMarkers(ff_agg, c(phenotyping_channels,functional_channels))),
+                                      FlowSOM::GetMarkers(ff_agg, unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     mfi_mc_names <- apply(expand.grid(paste0("MC", 1:nClus),
-                                      FlowSOM::GetMarkers(ff_agg, c(phenotyping_channels,functional_channels))),
+                                      FlowSOM::GetMarkers(ff_agg, unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     cl_msi <- matrix(NA,
                      nrow = length(file_list[[f]]),
