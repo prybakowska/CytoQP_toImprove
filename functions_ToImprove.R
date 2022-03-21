@@ -869,7 +869,8 @@ bead_normalize <- function(files,
 #' @export
 plot_marker_quantiles <- function(files_before_norm,
                                   files_after_norm,
-                                  batch_pattern,
+                                  batch_pattern = NULL,
+                                  batch_labels = NULL,
                                   remove_beads = FALSE,
                                   bead_channel = "140",
                                   uncommon_prefix = NULL,
@@ -880,13 +881,33 @@ plot_marker_quantiles <- function(files_before_norm,
                                   out_dir = NULL,
                                   transform_list = NULL){
 
+  if(!(length(files_after_norm) == length(files_before_norm))){
+    stop("files_before and after does not have the same length")
+  }
+  
   fcs_files <- c(files_after_norm, files_before_norm)
-   if (!all(file.exists(fcs_files))){
+  if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
+  
+  test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+                   basename(files_before_norm))
+  
+  if(is.null(batch_labels) & is.null(batch_pattern)){
+    stop("define batch_labels or batch_pattern")
+  } else if (!(is.null(batch_labels)) & !(is.null(batch_pattern))){
+    stop("both batch_labels and batch_pattern are defined, desellect one option by  setting to NULL")
+  }
+  
+
   tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
 
-
+  if(!is.null(batch_labels)){
+    if(length(tmp) != length(rep(batch_labels, 2))){
+      stop("The lenght of batch labels is not equal to the lenght of files")
+    }
+  }
+  
   ff_tmp <- flowCore::read.FCS(file.path(fcs_files[1]))
 
   if (!is.null(markers_to_plot)){
@@ -912,8 +933,15 @@ plot_marker_quantiles <- function(files_before_norm,
                            Marker = norm_markers,
                            Quantile = quantile_values,
                            Value = NA)
-  quantiles <- cbind(quantiles, "Batch" = stringr::str_match(
-    basename(as.character(quantiles$File)), batch_pattern)[,1])
+  
+  if(!is.null(batch_pattern)){
+    quantiles <- cbind(quantiles, "Batch" = stringr::str_match(
+      basename(as.character(quantiles$File)), batch_pattern)[,1])
+  }
+ 
+  if(!is.null(batch_labels)){
+    quantiles <- cbind(quantiles, "Batch" = rep(batch_labels, 2))
+  }
 
   quantiles$Normalization <- gsub(".*.fcs_|.*.FCS_", "", quantiles$File)
   quantiles$File <- gsub("_YES|_NO", "", quantiles$File)
@@ -2328,6 +2356,7 @@ plot_gate <- function(live_out,
 
 .plot_batch_ind <- function(name,
                             files,
+                            batch_labels,
                             arcsine_transform,
                             clustering_markers,
                             batch_pattern,
@@ -2342,7 +2371,7 @@ plot_gate <- function(live_out,
                                          writeOutput = FALSE,
                                          outputFile = file.path(out_dir, paste0("aggregated_for_batch_plotting.fcs")))
 
-  if (arcsine_transform == TRUE){
+  if (arcsine_transform){
     ff_agg <- flowCore::transform(ff_agg,
                                   flowCore::transformList(grep("Di", flowCore::colnames(ff_agg), value = TRUE),
                                                CytoNorm::cytofTransform))
@@ -2371,8 +2400,15 @@ plot_gate <- function(live_out,
 
   dimred_df$file_id <- ff_samp[,"File2"]
 
-  dimred_df$batch <- sapply(files[dimred_df$file_id], function(file) {
-    stringr::str_match(file, batch_pattern)[,1]})
+  if(!(is.null(batch_pattern))){
+    dimred_df$batch <- sapply(files[dimred_df$file_id], function(file) {
+      stringr::str_match(file, batch_pattern)[,1]})
+  }
+  
+  if(!(is.null(batch_labels))){
+    dimred_df$batch <- batch_labels
+  }
+  
 
   p <- ggplot2::ggplot(dimred_df,  aes_string(x = "dim1", y = "dim2", color = "batch")) +
     geom_point(aes(color = batch), size = 3, position="jitter") +
@@ -2424,30 +2460,59 @@ plot_gate <- function(live_out,
 #' @param seed seed to be set to obtain reproducible results,
 #' default is set to 789
 #' @param cells_total number of cells to plot per each file
+#' 
+#' @import ggplot2
 #'
 #' @return save plots for batch effect in the out_dir
 
 plot_batch <- function(files_before_norm ,
                        files_after_norm,
+                       batch_labels = NULL,
+                       batch_pattern = NULL,
                        cores = 1,
                        out_dir = getwd(),
                        clustering_markers = "CD|HLA|IgD|PD|BAFF|TCR",
                        arcsine_transform = TRUE,
-                       batch_pattern = "RUN[0-9]*",
                        manual_colors = NULL,
                        cells_total = 1000){
 
+  if(!(length(files_after_norm) == length(files_before_norm))){
+    stop("files_before and after does not have the same length")
+  }
+  
+  fcs_files <- c(files_after_norm, files_before_norm)
+  if (!all(file.exists(fcs_files))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
+  
+  test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+                   basename(files_before_norm))
+  
+  if(is.null(batch_labels) & is.null(batch_pattern)){
+    stop("define batch_labels or batch_pattern")
+  } else if (!(is.null(batch_labels)) & !(is.null(batch_pattern))){
+    stop("both batch_labels and batch_pattern are defined, desellect one option by  setting to NULL")
+  }
+  
+  if(!is.null(batch_labels)){
+    if(length(files_after_norm) != length(batch_labels)){
+      stop("The lenght of batch labels is not equal to the lenght of files")
+    }
+  }
+  
+  
   files_list <- list("files_before_norm" = files_before_norm,
                      "files_after_norm" = files_after_norm)
-
+  
   # Parallelized analysis
   plots <- BiocParallel::bplapply(names(files_list), function(x) {
     .plot_batch_ind(x,
                     file = files_list[[x]],
+                    batch_labels = batch_labels,
+                    batch_pattern = batch_pattern,
                     out_dir = out_dir,
                     clustering_markers = clustering_markers,
                     arcsine_transform = arcsine_transform,
-                    batch_pattern = batch_pattern,
                     manual_colors = manual_colors,
                     cells_total = cells_total)},
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
@@ -2459,6 +2524,17 @@ plot_batch <- function(files_before_norm ,
       height = 1500, res = 300)
   gridExtra::grid.arrange(grobs = plots, ncol = 2)
   dev.off()
+}
+
+test_match_order <- function(x,y) {
+  
+  if (isTRUE(all.equal(x,y))) print('Files are ordered')
+  
+  if (!isTRUE(all.equal(x,y)) && isTRUE(all.equal(sort(x),sort(y)))) 
+  warning('Perfect match but wrong order. Please order the files')
+  
+  if (!isTRUE(all.equal(x,y)) && !isTRUE(all.equal(sort(x),sort(y)))) 
+    warning('No match, please make sure that files are in the same order')
 }
 
 
@@ -2476,7 +2552,8 @@ plot_batch <- function(files_before_norm ,
 #' @return data frame for plotting
 prepare_data_for_plotting <- function(frequency_msi_list,
                                       matrix_type,
-                                      n_neighbours = 14){
+                                      n_neighbours = 14, 
+                                      seed = NULL){
   print(matrix_type)
 
   # set the number of closest neighborhoods
@@ -2492,7 +2569,10 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   }
 
   # build UMAP for files before the normalization
-  df_b_umap <- data.frame(umap(df_b, n_neighbors = n, scale = T))
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
+  df_b_umap <- data.frame(uwot::umap(df_b, n_neighbors = n, scale = T))
 
   # process files after normalization
   df_a <- frequency_msi_list[["after"]][[matrix_type]]
@@ -2504,7 +2584,10 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   }
 
   # build UMAP for files after the normalization
-  df_a_umap <- data.frame(umap(df_a, n_neighbors = n, scale = T))
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
+  df_a_umap <- data.frame(uwot::umap(df_a, n_neighbors = n, scale = T))
 
   # extract rownames to use the for ggplot annotation
   rnmes <- c(rownames(df_b), rownames(df_a))
@@ -2512,8 +2595,56 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   #join two UMAP data frames
   dr <- data.frame(rbind(df_b_umap, df_a_umap), check.names = F)
   colnames(dr) <- c("dim1", "dim2")
+  
+  dr$normalization <- c(rep("Raw", length(rownames(df_b_umap))),
+                        rep("Normalized", length(rownames(df_a_umap))))
+  
   return(dr)
 }
+
+
+plot_batch_using_freq_msi <- function(df_plot,
+                                      fill = NULL,
+                                      shape = NULL,
+                                      color = NULL,
+                                      split_by_batch = TRUE, 
+                                      fill_legend_name = NULL,
+                                      color_legend_name = NULL, 
+                                      shape_legend_name = NULL, 
+                                      title = NULL){
+  
+  
+  p <- ggplot(df_plot, aes(x = dim1, y = dim2))+
+    geom_point(data=df_plot, aes(x=dim1, y=dim2, fill = fill, 
+                                        shape = shape, color = color), 
+               size = 3)+
+    ggtitle(title)
+  
+  if(split_by_batch){
+    df_plot$normalization <- factor(df_plot$normalization, 
+                                    levels = c("Raw", "Normalized"))
+    p <- p + facet_wrap(~normalization)
+  }
+  
+  p <- p + theme(panel.background = element_rect(fill = "white", colour = "black",
+                                                 size = 1, linetype = "solid"),
+                 panel.grid.major = element_blank(),
+                 panel.grid.minor = element_blank(),
+                 # axis.text = element_blank(),
+                 # axis.ticks = element_blank(),
+                 # axis.title.y = element_blank(),
+                 # axis.title.x = element_blank(),
+                 legend.position = "right",
+                 legend.key=element_blank(),
+                 # title = element_text(size = 10),
+                 #strip.text = element_blank(),
+                 strip.background = element_rect(fill = "white", colour = "black"))
+
+  
+  p <- p + labs(fill = fill_legend_name, color = color_legend_name, shape = shape_legend_name)
+  return(p)
+}
+
 
 #' UMAP
 #'
@@ -2702,16 +2833,22 @@ split_big_flowFrames <- function(flow_frame,
 #' in FlowSOM, default is set to 35
 #' @param out_dir Character, pathway to where the FlowSOM clustering plot should
 #' be saved, default is set to working directory.
-#' @param seed numeric, set to obtain reproducible results, default is set to 789
+#' @param seed numeric, set to obtain reproducible results, default is set to NULL
 #' @param arcsine_transform arcsine_transform Logical, if the data should
 #' be transformed with arcsine transformation and cofactor 5, default is set to TRUE
+#' @param save_matrix Logical, if the results should be saved, if TRUE (default)
+#' list of matrices will be saved in out_dir.
+#' 
+#' @import ggplot2
 #'
 #' @return list of four matrices that contain calculation for
 #' cl_pctgs (cluster percentages), mcl_pctgs (metaclusters percentages),
 #' cl_msi (cluster MSIs for selected markers), mcl_msi (metaclusters MSI
 #' for selected markers)
-
-extract_pctgs_msi_per_flowsom <- function(file_list,
+#' 
+#' @export
+extract_pctgs_msi_per_flowsom <- function(files_before_norm,
+                                          files_after_norm,
                                           nCells = 50000,
                                           phenotyping_markers = c("CD", "HLA", "IgD"),
                                           functional_markers = NULL,
@@ -2719,8 +2856,16 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
                                           ydim = 10,
                                           n_metaclusters = 35,
                                           out_dir = getwd(),
-                                          seed = 789,
-                                          arcsine_transform = TRUE) {
+                                          seed = NULL,
+                                          arcsine_transform = TRUE, 
+                                          save_matrix = TRUE) {
+  
+  if (!all(file.exists(c(files_after_norm, files_before_norm)))){
+    stop("incorrect file path, the fcs file does not exist")
+  }
+  
+  file_list <- list("before" = files_before_norm,
+                    "after" = files_after_norm)
 
   res <- list()
   for (f in names(file_list)){
@@ -2734,13 +2879,14 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
 
     if(arcsine_transform == TRUE){
       ff_aggt <- flowCore::transform(ff_agg,
-                                     transformList(colnames(ff_agg)[grep("Di", colnames(ff_agg))],
+                                     flowCore::transformList(
+                                       flowCore::colnames(ff_agg)[grep("Di", flowCore::colnames(ff_agg))],
                                                    CytoNorm::cytofTransform))
     } else {
       ff_aggt <- ff_agg
     }
 
-    markers <- FlowSOM::GetMarkers(ff_agg, colnames(ff_agg))
+    markers <- FlowSOM::GetMarkers(ff_agg, flowCore::colnames(ff_agg))
     phenotyping_channels <- grep(paste(phenotyping_markers,
                                        collapse = ("|")), markers, value = TRUE)
     functional_channels <- grep(paste(functional_markers,
@@ -2764,9 +2910,9 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
     fsomPlot <- FlowSOM::PlotStars(fsom, backgroundValues = fsom$metaclustering)
     fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, cTotal = 5000, seed = s)
 
-    figure <- ggarrange(fsomPlot, fsomTsne,
+    figure <- suppressWarnings(ggpubr::ggarrange(fsomPlot, fsomTsne,
                         # labels = c("FlowSOM clustering", "tsne"),
-                        ncol = 2, nrow = 1)
+                        ncol = 2, nrow = 1))
 
     ggplot2::ggsave(filename = paste0(f, "_FlowSOM.pdf"), plot = figure, device = "pdf", path = out_dir,
            width =24, height = 10)
@@ -2781,15 +2927,17 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
                         ncol = nClus,
                         dimnames = list(basename(file_list[[f]]), 1:nClus))
     mfi_cl_names <- apply(expand.grid(paste0("Cl", seq_len(fsom$map$nNodes)),
-                                      FlowSOM::GetMarkers(ff_agg, unique(c(phenotyping_channels,functional_channels)))),
+                                      FlowSOM::GetMarkers(ff_agg, 
+                                                          unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     mfi_mc_names <- apply(expand.grid(paste0("MC", 1:nClus),
-                                      FlowSOM::GetMarkers(ff_agg, unique(c(phenotyping_channels,functional_channels)))),
+                                      FlowSOM::GetMarkers(ff_agg, 
+                                                          unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     cl_msi <- matrix(NA,
                      nrow = length(file_list[[f]]),
-                     ncol = fsom$map$nNodes * length(names(c(phenotyping_channels,
-                                                             functional_channels))),
+                     ncol = fsom$map$nNodes * length(unique(names(c(phenotyping_channels,
+                                                             functional_channels)))),
                      dimnames = list(basename(file_list[[f]]), mfi_cl_names))
     mcl_msi <- matrix(NA,
                       nrow = length(file_list[[f]]),
@@ -2815,10 +2963,10 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
       mcl_pctgs[file,] <- tapply(cl_pctgs[file,], fsom$metaclustering, sum)
 
       cluster_mfis <- FlowSOM::GetClusterMFIs(fsom_subset)
-      cl_msi[file,] <- as.numeric(cluster_mfis[,names(c(phenotyping_channels,functional_channels))])
+      cl_msi[file,] <- as.numeric(cluster_mfis[,unique(names(c(phenotyping_channels,functional_channels)))])
       mcluster_mfis <- as.matrix(FlowSOM::GetMetaclusterMFIs(list(FlowSOM = fsom_subset,
                                                      metaclustering = fsom$metaclustering)))
-      mcl_msi[file,] <- as.numeric(mcluster_mfis[,names(c(phenotyping_channels,functional_channels))])
+      mcl_msi[file,] <- as.numeric(mcluster_mfis[,unique(names(c(phenotyping_channels,functional_channels)))])
 
     }
 
@@ -2838,15 +2986,21 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
                          })
 
     # store the matrices in the list for convenient plotting
-    all_mx <- list("cl_pctgs" = cl_pctgs,
-                   "mcl_pctgs" = mcl_pctgs,
-                   "cl_msi" = mfi_cl_imp,
-                   "mcl_msi" = mfi_mcl_imp)
+    all_mx <- list("Cluster_frequencies" = cl_pctgs,
+                   "Metacluster_frequencies" = mcl_pctgs,
+                   "Cluster_MSIs" = mfi_cl_imp,
+                   "Metacluster_MSIs" = mfi_mcl_imp)
 
     saveRDS(all_mx, file.path(out_dir, paste0(f, "_calculated_features.RDS")))
     res[[f]] <- all_mx
   }
+   
+  if(save_matrix){
+    saveRDS(object = res, file = file.path(out_dir, "cell_frequency_and_msi.RDS"))
+  }
+  
   return(res)
+ 
 }
 
 
@@ -3271,7 +3425,42 @@ extract_pctgs_msi_per_flowsom <- function(file_list,
 
 
 
+#' Title
+#'
+#' @param ... 
+#' @param nrow 
+#' @param ncol 
+#' @param position 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 
+grid_arrange_common_legend <- function(plot_lists, nrow = 1, ncol = length(plot_lists), position = c("bottom", "right")) {
+  
+  position <- match.arg(position)
+  g <- ggplotGrob(plot_lists[[1]] + theme(legend.position = position))$grobs
+  legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
+  lheight <- sum(legend$height)
+  lwidth <- sum(legend$width)
+  gl <- lapply(plot_lists, function(x) x + theme(legend.position = "none"))
+  gl <- c(gl, nrow = nrow, ncol = ncol)
+  
+  combined <- switch(position,
+                     "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
+                                            legend,
+                                            ncol = 1,
+                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                     "right" = arrangeGrob(do.call(arrangeGrob, gl),
+                                           legend,
+                                           ncol = 2,
+                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
+  grid.newpage()
+  grid.draw(combined)
+  return(combined)
+  
+}
 
 
 

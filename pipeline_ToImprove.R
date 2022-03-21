@@ -317,8 +317,6 @@ gate_dir <- file.path(dir, "Gated")
 files_before_norm <- list.files(gate_dir,
                                 pattern = ".fcs",
                                 full.names = T)
-batch <- stringr::str_match(files_before_norm, "day[0-9]*")[,1]
-files_before_norm <- files_before_norm[order(factor(batch))]
 
 # Define files after normalization and order them according to the batch
 # Set input directory for files after CytoNorm normalization
@@ -326,37 +324,36 @@ norm_dir <- file.path(dir, "CytoNormed")
 files_after_norm <- list.files(norm_dir,
                                pattern = ".fcs",
                                full.names = T)
-batch <- stringr::str_match(files_after_norm, "day[0-9]*")[,1]
-files_after_norm <- files_after_norm[order(factor(batch))]
+
+# files needs to be in the same order, check and order if needed
+test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+                 basename(files_before_norm))
+
+batch_labels <- stringr::str_match(basename(files_before_norm), "day[0-9]*")[,1]
 
 # Plot batch effect
 set.seed(789)
 plot_batch(files_before_norm = files_before_norm,
            files_after_norm = files_after_norm,
+           batch_labels = batch_labels,
            cores = 1,
            out_dir = norm_dir,
-           batch_pattern = batch_pattern,
            clustering_markers = c("CD", "IgD", "HLA"),
            manual_colors = c("darkorchid4", "darkorange", "chartreuse4"))
 
 batch_pattern <- "day[0-9]*"
 plot_marker_quantiles(files_after_norm = files_after_norm,
                       files_before_norm = files_before_norm,
-                      batch_pattern = batch_pattern,
+                      batch_labels = batch_labels,
                       arcsine_transform = TRUE,
                       markers_to_plot = c("CD", "HLA", "IgD", "IL", "TNF",
                                           "TGF", "GR", "IFNa", "MCP", "MIP"),
                       manual_colors = c("darkorchid4", "darkorange", "darkgreen"),
                       out_dir = norm_dir)
 
-# Use FlowSOM to extract cell frequency and MSI
-
-# Create a list with files before and after normalization
-all_files <- list("before" = files_before_norm,
-                 "after" = files_after_norm)
-
-# perform FlowSOM clustering and extract cell frequency and msi per cluster and metacluster
-mx <- extract_pctgs_msi_per_flowsom(file_list = all_files,
+# Extract cell frequency and MSI
+mx <- extract_pctgs_msi_per_flowsom(files_after_norm = files_after_norm,
+                                    files_before_norm = files_before_norm,
                                     nCells = 50000,
                                     phenotyping_markers =  c("CD", "HLA", "IgD"),
                                     functional_markers = c("MIP", "MCP", "IL",
@@ -366,269 +363,38 @@ mx <- extract_pctgs_msi_per_flowsom(file_list = all_files,
                                     ydim = 10,
                                     n_metaclusters = 35,
                                     out_dir = norm_dir,
-                                    arcsine_transform = TRUE)
+                                    arcsine_transform = TRUE, 
+                                    save_matrix = TRUE, 
+                                    seed = 343)
 
-# set title for each plot
-title_gg <- c("Cluster frequencies" = "cl_pctgs",
-              "Metacluster frequencies" = "mcl_pctgs",
-              "Cluster MSIs" = "cl_msi",
-              "Metacluster MSIs" = "mcl_msi")
 
 # create the list to store the plots
 plots <- list()
-for (i in seq_along(title_gg)){
+for (name in names(mx[[1]])){
   df_plot <- prepare_data_for_plotting(frequency_msi_list = mx,
-                                       matrix_type = title_gg[1],
-                                       n_neighbours = 11)
-
-  # extract annotation for plotting
-  df_plot$day <- str_match(rownames(df_plot), "day[0-9]*")[,1]
-  df_plot$reference <- ifelse(grepl("REF", rownames(df_plot)),"ref", "")
-  df_plot$sample <- ifelse(grepl("p1", rownames(df_plot)),"p1",
-                           ifelse(grepl("p2", rownames(df_plot)), "p2", "ref"))
-  df_plot$stimulation <- str_match(rownames(df_plot), "RSQ|LPS|IMQ|CPG|UNS")
-  df_plot$normalization <- factor(ifelse(grepl("Norm", rownames(df_plot)),
-                                         "Normalized", "Raw"),
-                                  levels = c("Raw", "Normalized"))
-
-  # plot
-  gg <- ggplot(df_plot, aes(x = dim1, y = dim2))+
-    geom_point(data=df_plot, aes_string(x="dim1", y="dim2", fill = "day",
-                                        shape = "sample", color = "day"),
-               size = 3)+
-    facet_wrap(~normalization)+
-    ggtitle(names(title_gg)[which(title_gg%in% name)])+
-    scale_shape_manual(values = c(22, 21, 24))+
-    scale_fill_manual(values = c("darkorchid4", "darkorange", "chartreuse4"))+
-    scale_color_manual(values = c("darkorchid4", "darkorange", "chartreuse4"))+
-    theme(panel.background = element_rect(fill = "white", colour = "black",
-                                          size = 1, linetype = "solid"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.text = element_blank(),
-          axis.ticks = element_blank(),
-          axis.title.y = element_blank(),
-          axis.title.x = element_blank(),
-          legend.position = "right",
-          legend.key=element_blank(),
-          title = element_text(size = 10),
-          strip.text = element_blank(),
-          strip.background = element_rect(fill = "white", colour = "white"))
-
-  gg <- ggplotGrob(gg)
-  plots[[name]] <- gg
+                                       matrix_type = name,
+                                       n_neighbours = 11, seed = 1)
+  
+  
+  batch <- stringr::str_match(rownames(df_plot), "day[0-9]*")[,1]
+  samples_id <- ifelse(grepl("p1", rownames(df_plot)),"p1",
+                      ifelse(grepl("p2", rownames(df_plot)), "p2", "ref"))
+  stimulation <- stringr::str_match(rownames(df_plot), "UNS|RSQ|IMQ|LPS|CPG")[,1]
+ 
+  plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch, 
+                                             shape = samples_id, color = batch,
+                                             split_by_batch = TRUE, title = name)
+  
 }
-gg_a <- ggarrange(plotlist = plots,
-                  ncol = 2,
-                  nrow = 2)
+
+gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2, 
+                                   position = "right")
 
 ggplot2::ggsave(filename ="batch_effect_frequency_MSI.png",
                 device = "png",
                 path = norm_dir,
                 plot = gg_a,
                 units = "cm",
-                width = 19,
-                height = 10, dpi = 300)
-
-# ------------------------------------------------------------------------------
-# Run UMAP ---------------------------------------------------------------------
-#-------------------------------------------------------------------------------
-
-# Set input directory
-norm_dir <- file.path(dir, "CytoNormed")
-
-# Set output directory
-analysis_dir <- file.path(dir, "Analysis")
-
-files <- list.files(norm_dir,
-                    pattern = ".fcs$",
-                    full.names = TRUE)
-batch_pattern <- stringr::str_match(basename(files), ".*(day[0-9]*).*.fcs")[,2]
-
-# Build UMAP on aggregated files
-set.seed(1)
-UMAP_res <- UMAP(fcs_files = files,
-                 clustering_markers = c("CD", "HLA", "IgD"),
-                 functional_markers = c("IL", "TNF", "TGF", "Gr", "IFNa", "MIP", "MCP1"),
-                 out_dir = analysis_dir,
-                 batch_pattern = "day[0-9]*",
-                 arcsine_transform = TRUE,
-                 cells_total = 5000)
-
-saveRDS(UMAP_res,
-        file.path(analysis_dir, "UMAP.RDS"))
-
-# get manual labels for UMAP
-
-# copy "gating_strategy.wsp" file from RawFiles to Analysis folder so the workspace
-# is in the same place as generated aggregated file called: "aggregated_for_UMAP_analysis.fcs"
-
-file.copy(file.path(dir, "RawFiles","gating_strategy.wsp"), analysis_dir)
-
-# open flowJo workspace
-wsp <- CytoML::open_flowjo_xml(
-  file.path(analysis_dir, paste0("gating_strategy.wsp")))
-
-# parse the flowJo workspace
-gates <- CytoML::flowjo_to_gatingset(wsp,
-                                     "All Samples",
-                                     sampNloc = "sampleNode")
-# get cell population gate names
-gate_names <- flowWorkspace::gs_get_pop_paths(gates, path = "auto")
-
-# select which gates to plot
-celltypes_of_interest <- gate_names[-c(1, 3, 10, 14, 15, 18, 19, 20, 26, 28)]
-
-# get gating matrix for analyzed cells
-gatingMatrix <- flowWorkspace::gh_pop_get_indices_mat(gates, gate_names)
-
-# get the vector of the cell names for the sellected gates
-gating_labels <- manual_labels(gatingMatrix, celltypes_of_interest)
-
-# Add gating names column to be able to plot them on UMAP
-UMAP_res$cell_labels <- gating_labels
-
-# Plot UMAP between two donors using RSQ stimulation and day 1 batch
-# Add additional column to be able to do facet in ggplot
-UMAP_res$indyvidual <- stringr::str_match(UMAP_res$sample_name, "p1|p2|REF")[,1]
-
-# filter UMAP data frame for the needed data
-df <- UMAP_res %>%
-  dplyr::filter(batch == "day1" &
-           indyvidual %in% c("p1", "p2") &
-           sample_name %in% grep("RSQ", UMAP_res[,"sample_name"],
-                                 value = TRUE))
-# select markers to plot
-# markers_to_plot <- grep("CD|HLA|IgD",
-#                            colnames(df), value = TRUE)
-
-markers_to_plot <- grep("TNF|MIP1",
-                        colnames(df), value = TRUE)
-
-# scale markers between 0-1 for easier visualization
-
-df[,markers_to_plot] <- apply(df[,markers_to_plot], 2, rescale)
-
-# create a list to store the single plots
-plots <- list()
-
-# plot the map for each markers
-for(m in markers_to_plot){
-
-  set.seed(20)
-  p <- df %>% dplyr::sample_n(size = 5000) %>%
-    ggplot(aes_string(x = "dim1", y = "dim2", color = m)) +
-    geom_point(size = 1.5) +
-    ggtitle(m)+
-    facet_wrap("indyvidual") +
-    scale_color_gradientn(markers_to_plot[markers_to_plot == m],
-                          colours = colorRampPalette(rev(brewer.pal(n = 11, name = "Spectral")))(50))  +
-    theme(panel.background = element_rect(fill = "white", colour = "black",
-                                          size = 1, linetype = "solid"),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          plot.title = element_text(color="black", size=10, hjust = 0.5, face = "bold", vjust = -1),
-          # axis.text = element_blank(),
-          axis.title = element_blank(),
-          axis.ticks = element_blank(),
-          strip.text.x = element_blank(),
-          strip.background = element_rect(fill = "white"),
-          legend.text = element_text(size = 16),
-          legend.title = element_text(size = 20),
-          legend.position = "none",
-          plot.margin = unit(c(0, 0.5, 0, 0.5), "lines"))
-
-  plots[[m]] <- p
-}
-
-# print the plots and save them
-gg_a <- ggpubr::ggarrange(plotlist = plots,
-                          ncol = 2, #1, 3
-                          nrow = 1) #2, 8
-ggplot2::ggsave(filename = "marker_expressions_in_UMAP_cyt.png", device = "png", #marker_expressions_in_UMAP_cyt.png
-                path = analysis_dir,
-                plot = gg_a,
-                width = 18, #18
-                height = 5, # 21
-                units = "cm",
-                dpi = 300)
-
-# select number of colors equal to the number of cell populations
-n <- length(unique(df$cell_labels))
-myColors <- pals::glasbey(n = n)
-#  assign population names to the color
-names(myColors) <- unique(df$cell_labels)
-#  for better visualization change color for Unknown population to white
-myColors["Unknown"] <- "white"
-#  set seed to get reproducible results
-set.seed(21)
-# plot manual labels on UMAP, subset the number of cells for easier interpretation
-df %>% dplyr::sample_n(size = 8000) %>%
-  ggplot(aes_string(x = "dim1", y = "dim2", fill = "cell_labels")) +
-  geom_point(size = 2, pch = 21) +
-  scale_fill_manual(values = myColors)+
-  guides(fill = guide_legend(ncol = 1)) +
-  theme(panel.background = element_rect(fill = "white", colour = "black",
-                                        size = 1, linetype = "solid"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        plot.subtitle = element_text(color="black", size=16, hjust = 0.95, face = "bold"),
-        axis.text = element_text(size = 10, colour = "black"),
-        axis.title = element_blank(),
-        legend.text = element_text(size = 8),
-        legend.title = element_blank(),
-        legend.position = "right",
-        legend.key = element_blank(),
-        legend.spacing.y = unit(0.3, 'cm'),
-        legend.key.size = unit(0.25, "cm"))
-
-# save the plot
-ggsave(filename = "manual_labels_UMAP.png", device = "png",
-       path = analysis_dir, width = 12, height = 7.5, units = "cm", dpi = 300)
-
-
-# plot density
-df <- UMAP_res %>%
-  dplyr::filter(batch == "day1" &
-                  indyvidual %in% c("p1", "p2") &
-                  sample_name %in% grep("RSQ", UMAP_res[,"sample_name"],
-                                        value = TRUE))
-
-set.seed(20)
-gg_dens <-  df %>%
-  ggplot(aes_string(x = "dim1", y = "dim2")) +
-  geom_point(shape=16, size=0.25, show.legend = FALSE) +
-  stat_density_2d(geom = "polygon", contour = TRUE,
-                  aes(fill = after_stat(level)), colour = "black",
-                  bins = 10, show.legend = FALSE)+
-  scale_fill_distiller(palette = "Spectral", direction = -1)+
-  facet_wrap("indyvidual", nrow = 1) +
-  xlim(-10, NA)+
-  theme(panel.background = element_rect(fill = "white", colour = "black",
-                                        size = 1, linetype = "solid"),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        plot.title = element_blank(),
-        axis.text = element_blank(),
-        axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        strip.text.x = element_blank(),
-        strip.background = element_rect(fill = "white"),
-        legend.position = "none",
-        plot.margin = unit(c(0, 0.5, 0, 0.5), "lines"))
-
-ggplot2::ggsave(filename = "density_plot_UMAP.png", device = "png", #marker_expressions_in_UMAP_cyt.png
-                path = analysis_dir,
-                plot = gg_dens,
-                width = 9, #18
-                height = 4.6, # 21
-                units = "cm",
-                dpi = 300)
-
-
-
-
-
-
-
+                width = 22,
+                height = 14, dpi = 300)
 
