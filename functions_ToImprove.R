@@ -2357,19 +2357,20 @@ plot_gate <- function(live_out,
 .plot_batch_ind <- function(name,
                             files,
                             batch_labels,
-                            arcsine_transform,
-                            clustering_markers,
                             batch_pattern,
+                            out_dir,
+                            clustering_markers,
+                            arcsine_transform,
                             manual_colors,
-                            cells_total,
-                            out_dir) {
+                            cells_total) {
 
   ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = files,
                                          cTotal = length(files) * cells_total,
                                          verbose = TRUE,
                                          writeMeta = FALSE,
                                          writeOutput = FALSE,
-                                         outputFile = file.path(out_dir, paste0("aggregated_for_batch_plotting.fcs")))
+                                         outputFile = file.path(out_dir, 
+                                                                paste0("aggregated_for_batch_plotting.fcs")))
 
   if (arcsine_transform){
     ff_agg <- flowCore::transform(ff_agg,
@@ -2465,7 +2466,7 @@ plot_gate <- function(live_out,
 #'
 #' @return save plots for batch effect in the out_dir
 
-plot_batch <- function(files_before_norm ,
+plot_batch <- function(files_before_norm,
                        files_after_norm,
                        batch_labels = NULL,
                        batch_pattern = NULL,
@@ -2488,6 +2489,9 @@ plot_batch <- function(files_before_norm ,
   test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
                    basename(files_before_norm))
   
+  files_list <- list("files_before_norm" = files_before_norm,
+                     "files_after_norm" = files_after_norm)
+  
   if(is.null(batch_labels) & is.null(batch_pattern)){
     stop("define batch_labels or batch_pattern")
   } else if (!(is.null(batch_labels)) & !(is.null(batch_pattern))){
@@ -2501,13 +2505,10 @@ plot_batch <- function(files_before_norm ,
   }
   
   
-  files_list <- list("files_before_norm" = files_before_norm,
-                     "files_after_norm" = files_after_norm)
-  
   # Parallelized analysis
   plots <- BiocParallel::bplapply(names(files_list), function(x) {
-    .plot_batch_ind(x,
-                    file = files_list[[x]],
+    .plot_batch_ind(name = x,
+                    files = files_list[[x]],
                     batch_labels = batch_labels,
                     batch_pattern = batch_pattern,
                     out_dir = out_dir,
