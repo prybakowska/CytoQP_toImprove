@@ -311,15 +311,13 @@ CytoNorm::QuantileNorm.normalize(model = model,
 # Plot batch effect ------------------------------------------------------------
 #-------------------------------------------------------------------------------
 
-# Define files before normalization and order them according to the batch
-# Set input directory for files before CytoNorm normalization
+# Define files before normalization 
 gate_dir <- file.path(dir, "Gated")
 files_before_norm <- list.files(gate_dir,
                                 pattern = ".fcs",
                                 full.names = T)
 
-# Define files after normalization and order them according to the batch
-# Set input directory for files after CytoNorm normalization
+# Define files after normalization 
 norm_dir <- file.path(dir, "CytoNormed")
 files_after_norm <- list.files(norm_dir,
                                pattern = ".fcs",
@@ -383,7 +381,7 @@ for (name in names(mx[[1]])){
  
   plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch, 
                                              shape = samples_id, color = batch,
-                                             split_by_batch = TRUE, title = name)
+                                             split_by_normalization = TRUE, title = name)
   
 }
 
@@ -397,4 +395,6 @@ ggplot2::ggsave(filename ="batch_effect_frequency_MSI.png",
                 units = "cm",
                 width = 22,
                 height = 14, dpi = 300)
+
+
 
