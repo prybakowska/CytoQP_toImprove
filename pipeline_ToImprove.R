@@ -72,7 +72,7 @@ batch_pattern <- stringr::str_match(basename(files_b), "(?i).*(day[0-9]*).*.FCS"
 plot_marker_quantiles(files_after_norm = files_a,
                       files_before_norm = files_b,
                       batch_pattern = batch_pattern,
-                      arcsine_transform = TRUE,
+                      transform_flowframe = TRUE,
                       remove_beads = TRUE,
                       bead_channel = "140",
                       uncommon_prefix = "_beadNorm.fcs|.FCS",
@@ -100,7 +100,7 @@ clean_files(files, cores = 1,
             to_plot = "Flagged Only",
             data_type = "MC",
             Segment = 1000,
-            arcsine_transform = TRUE,
+            transform_flowframe = TRUE,
             non_used_bead_ch = "140")
 
 # ------------------------------------------------------------------------------

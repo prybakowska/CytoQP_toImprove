@@ -190,7 +190,7 @@ find_mass_ch <- function(flow_frame,
 
   channels_to_transform <- find_mass_ch(flow_frame, value = FALSE)
 
-  if (arcsine_transform == TRUE){
+  if (arcsine_transform){
 
     if(data_type == "MC"){
       ff_t <- flowCore::transform(flow_frame,
@@ -199,7 +199,7 @@ find_mass_ch <- function(flow_frame,
     }
     else if (data_type == "FC"){
       ff_t <- flowCore::transform(flow_frame,
-                                  flowCore::transformList(colnames(flow_frame)[channels_to_transform],
+                                  flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
                                                           flowCore::arcsinhTransform(a = 0, b = 1/150, c = 0)))
 
     }
@@ -258,9 +258,22 @@ find_mass_ch <- function(flow_frame,
   ff_t_clean <- cleaned_data$frame
 
   if (arcsine_transform){
-    ff_clean <- flowCore::transform(ff_t_clean,
-                                    flowCore::transformList(flowCore::colnames(flow_frame)[channels_to_transform],
-                                                  CytoNorm::cytofTransform.reverse))
+    
+    if(data_type == "MC"){
+      ff_clean <- flowCore::transform(ff_t_clean,
+                                  flowCore::transformList(flowCore::colnames(ff_t_clean)[channels_to_transform],
+                                                          CytoNorm::cytofTransform.reverse))
+    }
+    else if (data_type == "FC"){
+      ff_clean <- flowCore::transform(ff_t_clean,
+                                  flowCore::transformList(flowCore::colnames(ff_t_clean)[channels_to_transform],
+                                                          CytoNorm::cytofTransform.reverse(x = 150)))
+      
+    }
+    else {
+      stop("specify data type MC or FC")
+    }
+    
   }
   else {
     ff_clean <- ff_t_clean
@@ -825,9 +838,9 @@ bead_normalize <- function(files,
 #' @param out_dir Character, pathway to where the plots should be saved,
 #' default is set to working directory.
 #' @param transform_list Transformation list to pass to the flowCore
-#' transform function, see flowCore::transformList, if different transformation
+#' transform function, see flowCore::transformList(), if different transformation
 #' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
-#' arcsine_transform = FALSE no transformation will be applied.
+#' arcsine_transform = FALSE no transformation will be applied.Default set to NULL.
 #'
 #' @return Save the pdf with plots to out_dir.
 #'
@@ -1070,7 +1083,9 @@ plot_marker_quantiles <- function(files_before_norm,
 #' arcsine transformation and cofactor 5. Default set to TRUE.
 #' @param seed numeric, set to obtain reproducible results, default 1
 #' @param transform_list Transformation list to pass to the flowCore
-#' transform function see flowCore::transformList.
+#' transform function, see flowCore::transformList, if different transformation
+#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
+#' arcsine_transform = FALSE no transformation will be applied.
 #' @param my_colors An array specifying colors to be used for the background
 #' coloring of metaclusters in FlowSOM and t-SNE plot. Must have a length equal
 #' to the nClus.
@@ -2362,7 +2377,9 @@ plot_gate <- function(live_out,
                             clustering_markers,
                             arcsine_transform,
                             manual_colors,
-                            cells_total) {
+                            cells_total,
+                            transform_list,
+                            n_neighbors) {
 
   ff_agg <- FlowSOM::AggregateFlowFrames(fileNames = files,
                                          cTotal = length(files) * cells_total,
@@ -2372,10 +2389,15 @@ plot_gate <- function(live_out,
                                          outputFile = file.path(out_dir, 
                                                                 paste0("aggregated_for_batch_plotting.fcs")))
 
-  if (arcsine_transform){
+  if(arcsine_transform){
     ff_agg <- flowCore::transform(ff_agg,
-                                  flowCore::transformList(grep("Di", flowCore::colnames(ff_agg), value = TRUE),
-                                               CytoNorm::cytofTransform))
+                              flowCore::transformList(grep("Di", flowCore::colnames(ff_agg),
+                                                           value = TRUE),
+                                                      CytoNorm::cytofTransform))
+  } else if (!is.null(transform_list)){
+    ff_agg <- flowCore::transform(ff_agg, transform_list)
+  } else {
+    ff_agg <- ff_agg
   }
 
   markers <- FlowSOM::GetMarkers(ff_agg, flowCore::colnames(ff_agg))
@@ -2390,11 +2412,11 @@ plot_gate <- function(live_out,
                                                x
                                              })
 
-  samp <- length(files_list[[name]])
+  samp <- length(files)
   ff_samp <- ff_agg@exprs[sample(nrow(ff_agg@exprs), samp*cells_total), ]
 
   dimred_res <- uwot::umap(X = ff_samp[, names(cl_markers)],
-                           n_neighbors = 15, scale = TRUE)
+                           n_neighbors = n_neighbors, scale = TRUE)
 
   dimred_df <- data.frame(dim1 = dimred_res[,1], dim2= dimred_res[,2],
                           ff_samp[, names(cl_markers)])
@@ -2448,8 +2470,8 @@ plot_gate <- function(live_out,
 #' @param files_before_norm Character, full path to the unnormalized fcs_files.
 #' @param files_after_norm Character, full path to the normalized fcs_files.
 #' @param cores Number of cores to be used
-#' @param out_dir Character, pathway to where the plots should be saved,
-#' default is set to working directory.
+#' @param out_dir Character, pathway to where the files should be saved,
+#' if NULL (default) files will be saved to file.path(getwd(), CytoNormed).
 #' @param clustering_markers Character vector, marker names to be used for clustering,
 #' can be full marker name e.g. "CD45" or "CD" if all CD-markers needs to be plotted.
 #' These markers are used for UMAP builduing and plotting
@@ -2461,6 +2483,13 @@ plot_gate <- function(live_out,
 #' @param seed seed to be set to obtain reproducible results,
 #' default is set to 789
 #' @param cells_total number of cells to plot per each file
+#' @param transform_list Transformation list to pass to the flowCore
+#' transform function, see flowCore::transformList, if different transformation
+#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
+#' arcsine_transform = FALSE no transformation will be applied.
+#' @param n_neighbors The size of local neighborhood in UMAP analysis, default
+#' set to 15, as in uwot::umap(). 
+#' It is recommended to set it to the number of files in each batch. 
 #' 
 #' @import ggplot2
 #'
@@ -2471,17 +2500,20 @@ plot_batch <- function(files_before_norm,
                        batch_labels = NULL,
                        batch_pattern = NULL,
                        cores = 1,
-                       out_dir = getwd(),
+                       out_dir = NULL,
                        clustering_markers = "CD|HLA|IgD|PD|BAFF|TCR",
                        arcsine_transform = TRUE,
                        manual_colors = NULL,
-                       cells_total = 1000){
+                       cells_total = 1000,
+                       transform_list = NULL,
+                       n_neighbors = length(files_before_norm)){
 
   if(!(length(files_after_norm) == length(files_before_norm))){
     stop("files_before and after does not have the same length")
   }
   
   fcs_files <- c(files_after_norm, files_before_norm)
+  
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
@@ -2491,6 +2523,7 @@ plot_batch <- function(files_before_norm,
   
   files_list <- list("files_before_norm" = files_before_norm,
                      "files_after_norm" = files_after_norm)
+  
   
   if(is.null(batch_labels) & is.null(batch_pattern)){
     stop("define batch_labels or batch_pattern")
@@ -2515,7 +2548,9 @@ plot_batch <- function(files_before_norm,
                     clustering_markers = clustering_markers,
                     arcsine_transform = arcsine_transform,
                     manual_colors = manual_colors,
-                    cells_total = cells_total)},
+                    cells_total = cells_total, 
+                    transform_list = transform_list, 
+                    n_neighbors = n_neighbors)},
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
 
@@ -2548,12 +2583,14 @@ test_match_order <- function(x,y) {
 #' obstained in step extract_pctgs_msi_per_flowsom
 #' @param matrix_type the name of the matrix to be plotted
 #' @param seed numeric set to obtain reproducible results, default 654
-#' @param n_neighbours The size of local neighborhood in UMAP analysis
+#' @param n_neighbours The size of local neighborhood in UMAP analysis, default
+#' set to 15, as in uwot::umap(). 
+#' It is recommended to set it to the number of files in each batch. 
 #'
 #' @return data frame for plotting
 prepare_data_for_plotting <- function(frequency_msi_list,
                                       matrix_type,
-                                      n_neighbours = 14, 
+                                      n_neighbours = 15, 
                                       seed = NULL){
   print(matrix_type)
 
@@ -2565,7 +2602,7 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 
   # select the columns for which MSI is higher than 0.2 SD
   if(grepl("mfi", matrix_type)){
-    id_cols <-  which(apply(df_b, 2, sd) > 0.2)
+    id_cols <-  which(apply(df_b, 2, mean) > 1)
     df_b <- df_b[,id_cols]
   }
 
@@ -2580,7 +2617,7 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 
   # select the columns for which MSI is higher than 0.2 SD
   if(grepl("mfi", matrix_type)){
-    id_cols <-  which(apply(df_a, 2, sd) > 0.2)
+    id_cols <-  which(apply(df_a, 2, mean) > 1)
     df_a <- df_a[,id_cols]
   }
 
@@ -2817,7 +2854,8 @@ split_big_flowFrames <- function(flow_frame,
 #' extract_pctgs_msi_per_flowsom
 #'
 #' @description performs FlowSOM clustering and extracts cluster and metacluster
-#' frequency and MSI
+#' frequency and MSI. It is imputing 0 values when NAs are detected in MSI for 
+#' clusters and metaclusters.
 #'
 #' @param file_list list, pathway to the files before and after normalization
 #' @param nCells Numeric, number of cells to be cluster per each file,
@@ -2839,6 +2877,10 @@ split_big_flowFrames <- function(flow_frame,
 #' be transformed with arcsine transformation and cofactor 5, default is set to TRUE
 #' @param save_matrix Logical, if the results should be saved, if TRUE (default)
 #' list of matrices will be saved in out_dir.
+#' @param transform_list Transformation list to pass to the flowCore
+#' transform function, see flowCore::transformList, if different transformation
+#' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
+#' arcsine_transform = FALSE no transformation will be applied.Default set to NULL.
 #' 
 #' @import ggplot2
 #'
@@ -2859,7 +2901,8 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                                           out_dir = getwd(),
                                           seed = NULL,
                                           arcsine_transform = TRUE, 
-                                          save_matrix = TRUE) {
+                                          save_matrix = TRUE,
+                                          transform_list = NULL) {
   
   if (!all(file.exists(c(files_after_norm, files_before_norm)))){
     stop("incorrect file path, the fcs file does not exist")
@@ -2878,11 +2921,14 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                                   writeOutput = F,
                                   outputFile = file.path(out_dir, paste0(f, "_flowsom_agg.fcs")))
 
-    if(arcsine_transform == TRUE){
+    
+    if(arcsine_transform){
       ff_aggt <- flowCore::transform(ff_agg,
-                                     flowCore::transformList(
-                                       flowCore::colnames(ff_agg)[grep("Di", flowCore::colnames(ff_agg))],
-                                                   CytoNorm::cytofTransform))
+                                flowCore::transformList(grep("Di", flowCore::colnames(ff_agg),
+                                                             value = TRUE),
+                                                        CytoNorm::cytofTransform))
+    } else if (!is.null(transform_list)){
+      ff_aggt <- flowCore::transform(ff_agg, transform_list)
     } else {
       ff_aggt <- ff_agg
     }
@@ -3435,6 +3481,8 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
 #'
 #' @return
 #' @export
+#' 
+#' @import gridExtra, ggplot2
 #'
 #' @examples
 
@@ -3452,13 +3500,13 @@ grid_arrange_common_legend <- function(plot_lists, nrow = 1, ncol = length(plot_
                      "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
                                             legend,
                                             ncol = 1,
-                                            heights = unit.c(unit(1, "npc") - lheight, lheight)),
+                                            heights = grid::unit.c(unit(1, "npc") - lheight, lheight)),
                      "right" = arrangeGrob(do.call(arrangeGrob, gl),
                                            legend,
                                            ncol = 2,
-                                           widths = unit.c(unit(1, "npc") - lwidth, lwidth)))
-  grid.newpage()
-  grid.draw(combined)
+                                           widths = grid::unit.c(unit(1, "npc") - lwidth, lwidth)))
+  grid::grid.newpage()
+  grid::grid.draw(combined)
   return(combined)
   
 }
