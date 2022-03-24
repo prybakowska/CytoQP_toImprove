@@ -258,7 +258,7 @@ find_mass_ch <- function(flow_frame,
   ff_t_clean <- cleaned_data$frame
 
   if (arcsine_transform){
-    
+
     if(data_type == "MC"){
       ff_clean <- flowCore::transform(ff_t_clean,
                                   flowCore::transformList(flowCore::colnames(ff_t_clean)[channels_to_transform],
@@ -268,12 +268,12 @@ find_mass_ch <- function(flow_frame,
       ff_clean <- flowCore::transform(ff_t_clean,
                                   flowCore::transformList(flowCore::colnames(ff_t_clean)[channels_to_transform],
                                                           CytoNorm::cytofTransform.reverse(x = 150)))
-      
+
     }
     else {
       stop("specify data type MC or FC")
     }
-    
+
   }
   else {
     ff_clean <- ff_t_clean
@@ -897,21 +897,21 @@ plot_marker_quantiles <- function(files_before_norm,
   if(!(length(files_after_norm) == length(files_before_norm))){
     stop("files_before and after does not have the same length")
   }
-  
+
   fcs_files <- c(files_after_norm, files_before_norm)
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
-  
-  test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+
+  test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
                    basename(files_before_norm))
-  
+
   if(is.null(batch_labels) & is.null(batch_pattern)){
     stop("define batch_labels or batch_pattern")
   } else if (!(is.null(batch_labels)) & !(is.null(batch_pattern))){
     stop("both batch_labels and batch_pattern are defined, desellect one option by  setting to NULL")
   }
-  
+
 
   tmp <- c(paste0(files_after_norm, "_YES"), paste0(files_before_norm, "_NO"))
 
@@ -920,7 +920,7 @@ plot_marker_quantiles <- function(files_before_norm,
       stop("The lenght of batch labels is not equal to the lenght of files")
     }
   }
-  
+
   ff_tmp <- flowCore::read.FCS(file.path(fcs_files[1]))
 
   if (!is.null(markers_to_plot)){
@@ -946,12 +946,12 @@ plot_marker_quantiles <- function(files_before_norm,
                            Marker = norm_markers,
                            Quantile = quantile_values,
                            Value = NA)
-  
+
   if(!is.null(batch_pattern)){
     quantiles <- cbind(quantiles, "Batch" = stringr::str_match(
       basename(as.character(quantiles$File)), batch_pattern)[,1])
   }
- 
+
   if(!is.null(batch_labels)){
     quantiles <- cbind(quantiles, "Batch" = rep(batch_labels, 2))
   }
@@ -1614,7 +1614,10 @@ file_quality_check <- function(fcs_files,
                           filename = paste0(rownames(fs@phenoData), "_", file_name,
                                             "_debarcoded.fcs"))
 
-  return(fileOut)
+  filePaths <- file.path(tmp_dir, paste0(rownames(fs@phenoData), "_", file_name,
+                                        "_debarcoded.fcs"))
+
+  return(list(fileOut, filePaths))
 }
 
 #' Debarcodes files
@@ -1737,7 +1740,7 @@ debarcode_files <- function(fcs_files,
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
 
-  lessFiles <-  BiocParallel::bplapply(fcs_files, function(file) {
+  outFiles <-  BiocParallel::bplapply(fcs_files, function(file) {
     .debarcode_ind(file,
                    fcs_files = fcs_files,
                    file_batch_id = file_batch_id,
@@ -1752,9 +1755,13 @@ debarcode_files <- function(fcs_files,
   },
   BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
+  lessFiles <- lapply(outFiles, function(x) {return(x[[1]])})
+  debarcodedFiles <- lapply(outFiles, function(x) {return(x[[2]])})
+
   if(less_than_th){
     saveRDS(unlist(lessFiles), file.path(out_dir, "files_with_lower_debarcoding_threshold.RDS"))
   }
+  return(unlist(debarcodedFiles))
 }
 
 
@@ -1977,20 +1984,20 @@ gate_intact_cells <- function(flow_frame,
                               out_dir = NULL,
                               suffix = "_intact_gated",
                               ...){
-  
+
   # Check parameters
   if(!is(flow_frame, "flowFrame")) {
     stop("flow_frame must be a flow frame" )
   }
-  
+
   if (is.null(file_name)){
     file_name <- ff@description$FIL
   } else {
     file_name
   }
-  
+
   if(arcsine_transform == TRUE){
-    
+
     ff_t <- flowCore::transform(ff,
                                 flowCore::transformList(
                                   flowCore::colnames(ff)[grep("Di", flowCore::colnames(ff))],
@@ -1998,16 +2005,16 @@ gate_intact_cells <- function(flow_frame,
   } else {
     ff_t <- ff
   }
-  
+
   selection <- matrix(TRUE,
                       nrow = nrow(ff),
                       ncol = 1,
                       dimnames = list(NULL,
                                       c("intact")))
-  
+
   tr <- list()
   for(m in c("Ir193Di", "Ir191Di")){
-    
+
     tr[[m]] <- c(flowDensity::deGate(ff_t, m,
                                      tinypeak.removal = tinypeak_removal_head,
                                      upper = FALSE, use.upper = TRUE,
@@ -2017,41 +2024,41 @@ gate_intact_cells <- function(flow_frame,
                                      upper = TRUE, use.upper = TRUE,
                                      alpha = alpha_tail, verbose = F, count.lim = 3, ...))
   }
-  
+
   for(m in c("Ir193Di", "Ir191Di")){
     selection[ff_t@exprs[,m] < tr[[m]][1], "intact"] <- FALSE
     selection[ff_t@exprs[,m] > tr[[m]][2], "intact"] <- FALSE
   }
-  
+
   percentage <- (sum(selection)/length(selection))*100
   flowDensity::plotDens(ff_t, c("Ir193Di", "Ir191Di"),
                         main = paste0(basename(file_name)," ( ", format(round(percentage, 2),
                                                                         nsmall = 2), "% )"))
-  
+
   graphics::abline(h = c(tr[["Ir191Di"]]))
   graphics::abline(v = c(tr[["Ir193Di"]]))
   graphics::points(ff_t@exprs[!selection[,"intact"], c("Ir193Di", "Ir191Di")], pch = ".")
-  
+
   ff <- ff[selection[,"intact"], ]
-  
+
   if(save_gated_flow_frame){
-    
+
     .save_flowframe(ff, out_dir, suffix, file_name)
   }
-  
+
   return(ff)
 }
 
 
 .save_flowframe <- function(flow_frame,
-                            out_dir, 
+                            out_dir,
                             suffix,
                             file_name){
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Gated")
   }
   if(!dir.exists(out_dir)){dir.create(out_dir)}
-  fname <- gsub(pattern = ".fcs", replacement = paste0(suffix, ".fcs"), 
+  fname <- gsub(pattern = ".fcs", replacement = paste0(suffix, ".fcs"),
                 x = file_name, ignore.case = TRUE)
 
   flowCore::write.FCS(x = flow_frame, filename = file.path(out_dir, fname))
@@ -2122,113 +2129,113 @@ gate_intact_cells <- function(flow_frame,
 }
 
 
-#' Gate singlet cells 
+#' Gate singlet cells
 #'
 #' @param flow_frame A flowframe that contains cytometry data.
-#' @param file_name Character, the file name used for saving the flow frame 
+#' @param file_name Character, the file name used for saving the flow frame
 #' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
-#' the file name stored in keyword FIL will be used, 
+#' the file name stored in keyword FIL will be used,
 #' default is set to NULL.
-#' @param channels character, channels name to be used for gating, default is 
+#' @param channels character, channels name to be used for gating, default is
 #' to Event_length
 #' @param n_mad numeric, number of MADs to detect outliers
 #' @param arcsine_transform Logical, if the data should be transformed
-#' with arcsine transformation and cofactor 5. If FALSE the data won't be 
-#' transformed, thus transformed flow frame should be used if needed. 
-#' Default TRUE. 
-#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' with arcsine transformation and cofactor 5. If FALSE the data won't be
+#' transformed, thus transformed flow frame should be used if needed.
+#' Default TRUE.
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved.
 #' Only cells falling into intact cell region will be saved. Default set to FALSE.
-#' @param suffix Character, suffix placed in the name of saved fcs file, only 
-#' if save_gated_flow_frame = TRUE. Defult is "_singlets_gated". 
+#' @param suffix Character, suffix placed in the name of saved fcs file, only
+#' if save_gated_flow_frame = TRUE. Defult is "_singlets_gated".
 #' @param out_dir Character, pathway to where the files should be saved,
 #' if NULL (default) files will be saved to file.path(getwd(), Gated).
 #' @param ... arguments to pass to plotDens
 #'
 #' @return An untransformed flow frame with singlets only
-gate_singlet_cells <- function(flow_frame, 
-                               file_name = NULL, 
-                               channels = "Event_length", 
+gate_singlet_cells <- function(flow_frame,
+                               file_name = NULL,
+                               channels = "Event_length",
                                arcsine_transform = TRUE,
                                save_gated_flow_frame = NULL,
                                suffix = "_singlets_gated",
                                n_mad = 2,
                                out_dir = NULL,
                                ...){
-  
+
   # Check parameters
   if(!is(flow_frame, "flowFrame")) {
     stop("flow_frame must be a flow frame" )
   }
-  
+
   if (is.null(file_name)){
     file_name <- flow_frame@description$FIL
   } else {
-    file_name 
+    file_name
   }
-  
+
   if(arcsine_transform == TRUE){
-    
-    flow_frame_t <- flowCore::transform(flow_frame, 
+
+    flow_frame_t <- flowCore::transform(flow_frame,
                                         flowCore::transformList(
-                                          flowCore::colnames(flow_frame)[grep("Di", flowCore::colnames(flow_frame))], 
+                                          flowCore::colnames(flow_frame)[grep("Di", flowCore::colnames(flow_frame))],
                                                                 CytoNorm::cytofTransform))
   } else {
     flow_frame_t <- flow_frame
   }
-  
+
   selection <- matrix(TRUE,
                       nrow = nrow(flow_frame),
                       ncol = 1,
                       dimnames = list(NULL,
-                                      c("singlets")))  
-  
-  selection[, "singlets"] <- .remove_mad_outliers(flow_frame = flow_frame_t, 
+                                      c("singlets")))
+
+  selection[, "singlets"] <- .remove_mad_outliers(flow_frame = flow_frame_t,
                                                  channels = channels,
                                                  main = paste("Singlets", file_name),
                                                  n_mad = n_mad,
                                                  xlim = c(0, 100), ylim = c(0, 8), ...)
-  
+
   flow_frame <- flow_frame[selection[,"singlets"], ]
-  
+
   if(save_gated_flow_frame){
-    
+
     .save_flowframe(flow_frame, out_dir, suffix, file_name)
   }
-  
+
   return(flow_frame)
-  
+
 }
 
-#' Gate live cells 
-#' 
+#' Gate live cells
+#'
 #' @description Performs gating of live cells using flowDensity package
-#' 
+#'
 #' @param flow_frame A flowframe that contains cytometry data.
-#' @param file_name Character, the file name used for saving the flow frame 
+#' @param file_name Character, the file name used for saving the flow frame
 #' (if save_gated_flow_frame = TRUE) and for plotting, if NULL
-#' the file name stored in keyword FIL will be used, 
+#' the file name stored in keyword FIL will be used,
 #' default is set to NULL.
 #' @param viability_channel Character, the channel name used for viability staining
-#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include 
-#' tiny peaks in the tail of the density ditribution curve for both viability channel 
+#' @param tinypeak_removal_viability, numeric from 0-1, as in deGate to exclude/include
+#' tiny peaks in the tail of the density ditribution curve for both viability channel
 #' @param tinypeak_removal_Iridium the same as tinypeak_removal_viablity but for
 #' the head and tail of the density ditribution curve in Iridium channel
-#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change 
+#' @param alpha_viability numeric, 0-1, as in deGate specify the significance of change
 #' in the slope of viability channel
 #' @param alpha_Iridium the same as in alpha_viability but for the Iridium
-#' @param arcsine_transform Logical, if the data should be transformed with 
+#' @param arcsine_transform Logical, if the data should be transformed with
 #' arcsine transformation and cofactor 5.
-#' @param save_gated_flow_frame Logical, if gated flow frame should be saved. 
+#' @param save_gated_flow_frame Logical, if gated flow frame should be saved.
 #' Only cells falling into intact cell region will be saved. Default set to FALSE.
-#' @param suffix Character, suffix placed in the name of saved fcs file, only 
-#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".  
+#' @param suffix Character, suffix placed in the name of saved fcs file, only
+#' if save_gated_flow_frame = TRUE.Defult is "_intact_gated".
 #' @param out_dir Character, pathway to where the files should be saved,
 #' if NULL (default) files will be saved to file.path(getwd(), Gated).
 #' @param ... arguments to pass to flowDensity::plotDens()
-#' 
+#'
 #' @return An untransformed flow frame with live cells only
 
-gate_live_cells <- function(flow_frame, 
+gate_live_cells <- function(flow_frame,
                             file_name = NULL,
                             viability_channel,
                             tinypeak_removal_viability = 0.8,
@@ -2239,91 +2246,91 @@ gate_live_cells <- function(flow_frame,
                             save_gated_flow_frame = FALSE,
                             suffix = "_live_gated",
                             out_dir = NULL,... ){
-  
+
   # Check parameters
   if(!is(flow_frame, "flowFrame")) {
     stop("flow_frame must be a flow frame" )
   }
-  
+
   ff <- flow_frame
-  
+
   if (is.null(file_name)){
     file_name <- ff@description$FIL
   } else {
-    file_name 
+    file_name
   }
-  
+
   if(arcsine_transform == TRUE){
-    
-    ff_t <- flowCore::transform(ff, 
-                                flowCore::transformList( flowCore::colnames(ff)[grep("Di",  
-                                                                                     flowCore::colnames(ff))], 
+
+    ff_t <- flowCore::transform(ff,
+                                flowCore::transformList( flowCore::colnames(ff)[grep("Di",
+                                                                                     flowCore::colnames(ff))],
                                               CytoNorm::cytofTransform))
   } else {
     ff_t <- ff
   }
-  
+
   selection <- matrix(TRUE,
                       nrow = nrow(ff),
                       ncol = 1,
                       dimnames = list(NULL,
                                       c("live")))
-  
-  
+
+
   v_ch <- grep(viability_channel,  flowCore::colnames(ff), value = T)
-  
+
   tr <- list()
   for(m in c("Ir191Di", v_ch)){
     if (m == v_ch) {
       upper = TRUE
       alpha = alpha_viability
       tr[[m]] <- flowDensity::deGate(ff_t, m,
-                                     tinypeak.removal = tinypeak_removal_viability, 
+                                     tinypeak.removal = tinypeak_removal_viability,
                                      upper = upper, use.upper = TRUE,
                                      alpha = alpha, verbose = F, count.lim = 3)
-      
+
     } else {
       alpha = alpha_Iridium
       tr[[m]] <- c(flowDensity::deGate(ff_t, m,
-                                       tinypeak.removal = tinypeak_removal_Iridium, 
+                                       tinypeak.removal = tinypeak_removal_Iridium,
                                        upper = FALSE, use.upper = TRUE,
-                                       alpha = alpha,  verbose = F, count.lim = 3), 
+                                       alpha = alpha,  verbose = F, count.lim = 3),
                    flowDensity::deGate(ff_t, m,
-                                       tinypeak.removal = tinypeak_removal_Iridium, 
+                                       tinypeak.removal = tinypeak_removal_Iridium,
                                        upper = TRUE, use.upper = TRUE,
-                                       alpha = alpha, verbose = F, count.lim = 3)) 
-      
+                                       alpha = alpha, verbose = F, count.lim = 3))
+
     }
   }
-  
+
   for(m in c(v_ch, "Ir191Di")){
     if (m == v_ch) {
-      selection[ff_t@exprs[,m] > tr[[m]][1], "live"] <- FALSE 
+      selection[ff_t@exprs[,m] > tr[[m]][1], "live"] <- FALSE
     } else {
       selection[ff_t@exprs[,m] < tr[[m]][1], "live"] <- FALSE
-      selection[ff_t@exprs[,m] > tr[[m]][2], "live"] <- FALSE  
+      selection[ff_t@exprs[,m] > tr[[m]][2], "live"] <- FALSE
     }
   }
   percentage <- (sum(selection)/length(selection))*100
-  flowDensity::plotDens(ff_t, c(v_ch, "Ir191Di"), 
-                        main = paste0(file_name," ( ", format(round(percentage, 2), 
+  flowDensity::plotDens(ff_t, c(v_ch, "Ir191Di"),
+                        main = paste0(file_name," ( ", format(round(percentage, 2),
                                                               nsmall = 2), "% )"),
                         xlim = c(0, 8), ylim = c(0, 8), ...)
-  
+
   graphics::abline(h = tr[["Ir191Di"]])
   graphics::abline(v = tr[[v_ch]])
-  
-  graphics::points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".") 
-  
+
+  graphics::points(ff_t@exprs[!selection[,"live"], c(v_ch, "Ir191Di")], pch = ".")
+
   ff <- ff[selection[,"live"], ]
-  
+
   if(save_gated_flow_frame){
-    
+
     .save_flowframe(flow_frame, out_dir, suffix, file_name)
   }
-  
+
   return(ff)
-  
+
 }
 
 
@@ -2344,7 +2351,7 @@ gate_live_cells <- function(flow_frame,
 
 
 plot_gate <- function(live_out,
-                      filename = "gating.png", 
+                      filename = "gating.png",
                       n_plots = 3) {
 
   n_plots <- 3
@@ -2363,11 +2370,11 @@ plot_gate <- function(live_out,
   grDevices::png(filename,
                  width = n_plots * 3,
                  height = nRows * 3)
- 
+
   ggpubr::ggarrange(plotlist = allPlots, nrow = nRows, ncol = n_plots)
-  
+
   dev.off()
-  
+
 }
 
 .plot_batch_ind <- function(name,
@@ -2387,7 +2394,7 @@ plot_gate <- function(live_out,
                                          verbose = TRUE,
                                          writeMeta = FALSE,
                                          writeOutput = FALSE,
-                                         outputFile = file.path(out_dir, 
+                                         outputFile = file.path(out_dir,
                                                                 paste0("aggregated_for_batch_plotting.fcs")))
 
   if(arcsine_transform){
@@ -2428,11 +2435,11 @@ plot_gate <- function(live_out,
     dimred_df$batch <- sapply(files[dimred_df$file_id], function(file) {
       stringr::str_match(file, batch_pattern)[,1]})
   }
-  
+
   if(!(is.null(batch_labels))){
     dimred_df$batch <- batch_labels
   }
-  
+
 
   p <- ggplot2::ggplot(dimred_df,  aes_string(x = "dim1", y = "dim2", color = "batch")) +
     geom_point(aes(color = batch), size = 3, position="jitter") +
@@ -2463,7 +2470,7 @@ plot_gate <- function(live_out,
 
 }
 
-#' Visualize batch using umap dimensional reduction 
+#' Visualize batch using umap dimensional reduction
 #'
 #' @description Plots batch effect using UMAP and clustering markers
 #'
@@ -2486,26 +2493,26 @@ plot_gate <- function(live_out,
 #' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
 #' arcsine_transform = FALSE no transformation will be applied.
 #' @param n_neighbors The size of local neighborhood in UMAP analysis, default
-#' set to 15, as in uwot::umap(). 
-#' It is recommended to set it to the number of files in each batch. 
-#' 
+#' set to 15, as in uwot::umap().
+#' It is recommended to set it to the number of files in each batch.
+#'
 #' @import ggplot2
-#' 
-#' @examples 
-#' # Define files before normalization 
+#'
+#' @examples
+#' # Define files before normalization
 #' gate_dir <- file.path(dir, "Gated")
 #' files_before_norm <- list.files(gate_dir,
 #'                                 pattern = ".fcs",
 #'                                 full.names = T)
-#' 
-#' # Define files after normalization 
+#'
+#' # Define files after normalization
 #' norm_dir <- file.path(dir, "CytoNormed")
 #' files_after_norm <- list.files(norm_dir,
 #'                                pattern = ".fcs",
 #'                                full.names = T)
 #'
 #' # files needs to be in the same order, check and order if needed
-#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
 #'                  basename(files_before_norm))
 #'
 #' batch_labels <- stringr::str_match(basename(files_before_norm), "day[0-9]*")[,1]
@@ -2538,38 +2545,38 @@ plot_batch <- function(files_before_norm,
   if(!(length(files_after_norm) == length(files_before_norm))){
     stop("files_before and after does not have the same length")
   }
-  
+
   fcs_files <- c(files_after_norm, files_before_norm)
-  
+
   if (!all(file.exists(fcs_files))){
     stop("incorrect file path, the fcs file does not exist")
   }
-  
-  test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+
+  test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
                    basename(files_before_norm))
-  
+
   files_list <- list("files_before_norm" = files_before_norm,
                      "files_after_norm" = files_after_norm)
-  
-  
+
+
   if(is.null(batch_labels) & is.null(batch_pattern)){
     stop("define batch_labels or batch_pattern")
   } else if (!(is.null(batch_labels)) & !(is.null(batch_pattern))){
     stop("both batch_labels and batch_pattern are defined, desellect one option by  setting to NULL")
   }
-  
+
   if(!is.null(batch_labels)){
     if(length(files_after_norm) != length(batch_labels)){
       stop("The lenght of batch labels is not equal to the lenght of files")
     }
   }
-  
+
     if(is.null(out_dir)){
       out_dir <- file.path(getwd(), "CytoNormed")
     }
     if(!dir.exists(out_dir)){dir.create(out_dir)}
-  
-  
+
+
   # Parallelized analysis
   plots <- BiocParallel::bplapply(names(files_list), function(x) {
     .plot_batch_ind(name = x,
@@ -2580,8 +2587,8 @@ plot_batch <- function(files_before_norm,
                     clustering_markers = clustering_markers,
                     arcsine_transform = arcsine_transform,
                     manual_colors = manual_colors,
-                    cells_total = cells_total, 
-                    transform_list = transform_list, 
+                    cells_total = cells_total,
+                    transform_list = transform_list,
                     n_neighbors = n_neighbors)},
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
 
@@ -2595,13 +2602,13 @@ plot_batch <- function(files_before_norm,
 }
 
 test_match_order <- function(x,y) {
-  
+
   if (isTRUE(all.equal(x,y))) print('Files are ordered')
-  
-  if (!isTRUE(all.equal(x,y)) && isTRUE(all.equal(sort(x),sort(y)))) 
+
+  if (!isTRUE(all.equal(x,y)) && isTRUE(all.equal(sort(x),sort(y))))
   warning('Perfect match but wrong order. Please order the files')
-  
-  if (!isTRUE(all.equal(x,y)) && !isTRUE(all.equal(sort(x),sort(y)))) 
+
+  if (!isTRUE(all.equal(x,y)) && !isTRUE(all.equal(sort(x),sort(y))))
     warning('No match, please make sure that files are in the same order')
 }
 
@@ -2617,30 +2624,30 @@ test_match_order <- function(x,y) {
 #' @param matrix_type The name of the matrix to be plotted.
 #' @param seed Numeric set to obtain reproducible results, default NULL.
 #' @param n_neighbours The size of local neighborhood in UMAP analysis, default
-#' set to 15, as in uwot::umap(). 
-#' It is recommended to set it to the number of files in each batch. 
+#' set to 15, as in uwot::umap().
+#' It is recommended to set it to the number of files in each batch.
 #'
 #' @return data frame for plotting
-#' 
-#' @examples 
-#' # Define files before normalization 
+#'
+#' @examples
+#' # Define files before normalization
 #' gate_dir <- file.path(dir, "Gated")
 #' files_before_norm <- list.files(gate_dir,
 #'                                 pattern = ".fcs",
 #'                                 full.names = T)
-#' 
-#' # Define files after normalization 
+#'
+#' # Define files after normalization
 #' norm_dir <- file.path(dir, "CytoNormed")
 #' files_after_norm <- list.files(norm_dir,
 #'                                pattern = ".fcs",
 #'                                full.names = T)
 #'
 #' # files needs to be in the same order, check and order if needed
-#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
 #'                  basename(files_before_norm))
 #'
 #' batch_labels <- stringr::str_match(basename(files_before_norm), "day[0-9]*")[,1]
-#' 
+#'
 #' mx <- extract_pctgs_msi_per_flowsom(files_after_norm = files_after_norm,
 #'                                     files_before_norm = files_before_norm,
 #'                                     nCells = 50000,
@@ -2652,8 +2659,8 @@ test_match_order <- function(x,y) {
 #'                                     ydim = 10,
 #'                                     n_metaclusters = 35,
 #'                                     out_dir = norm_dir,
-#'                                     arcsine_transform = TRUE, 
-#'                                     save_matrix = TRUE, 
+#'                                     arcsine_transform = TRUE,
+#'                                     save_matrix = TRUE,
 #'                                     seed = 343)
 #' # create the list to store the plots
 #'  plots <- list()
@@ -2661,20 +2668,20 @@ test_match_order <- function(x,y) {
 #'  df_plot <- prepare_data_for_plotting(frequency_msi_list = mx,
 #'                                        matrix_type = name,
 #'                                       n_neighbours = 11, seed = 1)
-#'  
-#'  
+#'
+#'
 #'  batch <- stringr::str_match(rownames(df_plot), "day[0-9]*")[,1]
 #'  samples_id <- ifelse(grepl("p1", rownames(df_plot)),"p1",
 #'                       ifelse(grepl("p2", rownames(df_plot)), "p2", "ref"))
 #'  stimulation <- stringr::str_match(rownames(df_plot), "UNS|RSQ|IMQ|LPS|CPG")[,1]
-#'  
-#'  plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch, 
+#'
+#'  plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch,
 #'                                             shape = samples_id, color = batch,
 #'                                             split_by_normalization = TRUE, title = name)
-#'  
+#'
 #'}
 #'
-#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2, 
+#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2,
 #'                                   position = "right")
 #'
 #'ggplot2::ggsave(filename ="batch_effect_frequency_MSI.png",
@@ -2684,10 +2691,10 @@ test_match_order <- function(x,y) {
 #'                units = "cm",
 #'                width = 22,
 #'                height = 14, dpi = 300)
-#'                                     
+#'
 prepare_data_for_plotting <- function(frequency_msi_list,
                                       matrix_type,
-                                      n_neighbours = 15, 
+                                      n_neighbours = 15,
                                       seed = NULL){
   print(matrix_type)
 
@@ -2730,26 +2737,26 @@ prepare_data_for_plotting <- function(frequency_msi_list,
   #join two UMAP data frames
   dr <- data.frame(rbind(df_b_umap, df_a_umap), check.names = F)
   colnames(dr) <- c("dim1", "dim2")
-  
+
   dr$normalization <- c(rep("Raw", length(rownames(df_b_umap))),
                         rep("Normalized", length(rownames(df_a_umap))))
-  
+
   return(dr)
 }
 
 
 #' Plot the distribution of the features across batches in two dimensional space
-#' 
+#'
 #' @description Uses ggplot draw the distribution of the samples across batches
 #'
-#' @param df_plot Data frame that contains dim1 and dim2 obtained upon dimensional 
-#' reduction. This data frame is generated by prepare_data_for_plotting.  
+#' @param df_plot Data frame that contains dim1 and dim2 obtained upon dimensional
+#' reduction. This data frame is generated by prepare_data_for_plotting.
 #' @param fill As in ggplot2, defines by which variable the points are colored.
 #' @param shape As in ggplot2, defines by which variable the shapes are plotted.
-#' @param color As in ggplot2, defines by which variable the borderd of the 
+#' @param color As in ggplot2, defines by which variable the borderd of the
 #' points are colored.
-#' @param split_by_batch Logical, if TRUE (defult) the plots are split 
-#' (facet_wrap) by normalization. 
+#' @param split_by_batch Logical, if TRUE (defult) the plots are split
+#' (facet_wrap) by normalization.
 #' @param fill_legend_name Character, specifies the name of the legend for fill.
 #' @param color_legend_name Character, specifies the name of the legend for fill.
 #' @param shape_legend_name Character, specifies the name of the legend for fill.
@@ -2758,25 +2765,25 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 #' @return ggplot
 #' @export
 #'
-#' @examples 
-#' # Define files before normalization 
+#' @examples
+#' # Define files before normalization
 #' gate_dir <- file.path(dir, "Gated")
 #' files_before_norm <- list.files(gate_dir,
 #'                                 pattern = ".fcs",
 #'                                 full.names = T)
-#' 
-#' # Define files after normalization 
+#'
+#' # Define files after normalization
 #' norm_dir <- file.path(dir, "CytoNormed")
 #' files_after_norm <- list.files(norm_dir,
 #'                                pattern = ".fcs",
 #'                                full.names = T)
 #'
 #' # files needs to be in the same order, check and order if needed
-#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
 #'                  basename(files_before_norm))
 #'
 #' batch_labels <- stringr::str_match(basename(files_before_norm), "day[0-9]*")[,1]
-#' 
+#'
 #' mx <- extract_pctgs_msi_per_flowsom(files_after_norm = files_after_norm,
 #'                                     files_before_norm = files_before_norm,
 #'                                     nCells = 50000,
@@ -2788,8 +2795,8 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 #'                                     ydim = 10,
 #'                                     n_metaclusters = 35,
 #'                                     out_dir = norm_dir,
-#'                                     arcsine_transform = TRUE, 
-#'                                     save_matrix = TRUE, 
+#'                                     arcsine_transform = TRUE,
+#'                                     save_matrix = TRUE,
 #'                                     seed = 343)
 #' # create the list to store the plots
 #'  plots <- list()
@@ -2797,20 +2804,20 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 #'  df_plot <- prepare_data_for_plotting(frequency_msi_list = mx,
 #'                                        matrix_type = name,
 #'                                       n_neighbours = 11, seed = 1)
-#'  
-#'  
+#'
+#'
 #'  batch <- stringr::str_match(rownames(df_plot), "day[0-9]*")[,1]
 #'  samples_id <- ifelse(grepl("p1", rownames(df_plot)),"p1",
 #'                       ifelse(grepl("p2", rownames(df_plot)), "p2", "ref"))
 #'  stimulation <- stringr::str_match(rownames(df_plot), "UNS|RSQ|IMQ|LPS|CPG")[,1]
-#'  
-#'  plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch, 
+#'
+#'  plots[[name]] <- plot_batch_using_freq_msi(df_plot = df_plot, fill = batch,
 #'                                             shape = samples_id, color = batch,
 #'                                             split_by_normalization = TRUE, title = name)
-#'  
+#'
 #'}
 #'
-#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2, 
+#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2,
 #'                                   position = "right")
 #'
 #'ggplot2::ggsave(filename ="batch_effect_frequency_MSI.png",
@@ -2820,30 +2827,30 @@ prepare_data_for_plotting <- function(frequency_msi_list,
 #'                units = "cm",
 #'                width = 22,
 #'                height = 14, dpi = 300)
-#'                                     
+#'
 plot_batch_using_freq_msi <- function(df_plot,
                                       fill = NULL,
                                       shape = NULL,
                                       color = NULL,
-                                      split_by_normalization = TRUE, 
+                                      split_by_normalization = TRUE,
                                       fill_legend_name = NULL,
-                                      color_legend_name = NULL, 
-                                      shape_legend_name = NULL, 
+                                      color_legend_name = NULL,
+                                      shape_legend_name = NULL,
                                       title = NULL){
-  
-  
+
+
   p <- ggplot(df_plot, aes(x = dim1, y = dim2))+
-    geom_point(data=df_plot, aes(x=dim1, y=dim2, fill = fill, 
-                                        shape = shape, color = color), 
+    geom_point(data=df_plot, aes(x=dim1, y=dim2, fill = fill,
+                                        shape = shape, color = color),
                size = 3)+
     ggtitle(title)
-  
+
   if(split_by_normalization){
-    df_plot$normalization <- factor(df_plot$normalization, 
+    df_plot$normalization <- factor(df_plot$normalization,
                                     levels = c("Raw", "Normalized"))
     p <- p + facet_wrap(~normalization)
   }
-  
+
   p <- p + theme(panel.background = element_rect(fill = "white", colour = "black",
                                                  size = 1, linetype = "solid"),
                  panel.grid.major = element_blank(),
@@ -2858,7 +2865,7 @@ plot_batch_using_freq_msi <- function(df_plot,
                  #strip.text = element_blank(),
                  strip.background = element_rect(fill = "white", colour = "black"))
 
-  
+
   p <- p + labs(fill = fill_legend_name, color = color_legend_name, shape = shape_legend_name)
   return(p)
 }
@@ -2984,7 +2991,7 @@ manual_labels <- function (manual_matrix, cell_types)
 }
 
 #'@description Calculates beginning and end of each flow frame.
-#'Code from Annelies Emmaneel (2021). PeacoQC: 
+#'Code from Annelies Emmaneel (2021). PeacoQC:
 #'Peak-based selection of high quality cytometry data. R package
 #'version 1.4.0.
 #'
@@ -3000,7 +3007,7 @@ manual_labels <- function (manual_matrix, cell_types)
 #'
 #' @description Split the big flow frames into smaller ones.
 #'
-#' @param flow_frame Flow frame containing cytometry data. 
+#' @param flow_frame Flow frame containing cytometry data.
 #' @param event_per_flow_frame Numeric, the number of events to be split to
 #' small flow frames, default is set to 500000.
 #' @param min_cell_per_fcs Numeric, minimal number of cells in flow frame
@@ -3016,7 +3023,7 @@ split_big_flowFrames <- function(flow_frame,
 
   total_events <- nrow(flow_frame)
   res_breaks <- .make_breaks(event_per_flow_frame, total_events)
-  
+
   # create out_dir if does not exist
   if(is.null(out_dir)){
     out_dir <- file.path(getwd(), "Splitted")
@@ -3029,14 +3036,14 @@ split_big_flowFrames <- function(flow_frame,
     if (i < 10) {
       num <- paste0("0", i)
     }
-    
+
     if(nrow(flow_frame[id, ]) > min_cell_per_fcs){
       flowCore::write.FCS(flow_frame[id, ],
-                          file.path(out_dir, 
+                          file.path(out_dir,
                                     gsub(".fcs|.FCS",
                                          paste0("_", num, ".fcs"), flow_frame@description$ORIGINALGUID)))
     }
-    
+
   }
 }
 
@@ -3044,7 +3051,7 @@ split_big_flowFrames <- function(flow_frame,
 #' Extracts percentages and MSI for cell populations
 #'
 #' @description Performs FlowSOM clustering and extracts cluster and metacluster
-#' frequency and MSI. It is imputing 0 values when NAs are detected in MSI for 
+#' frequency and MSI. It is imputing 0 values when NAs are detected in MSI for
 #' clusters and metaclusters.
 #'
 #' @param file_list List, pathway to the files before and after normalization
@@ -3053,7 +3060,7 @@ split_big_flowFrames <- function(flow_frame,
 #' @param phenotyping_markers Character vector, marker names to be used for clustering,
 #' can be full marker name e.g. "CD45" or "CD" if all CD-markers needs to be plotted.
 #' @param functional_markers Character vector, marker names to be used for
-#' functional markers, can be full marker name 
+#' functional markers, can be full marker name
 #' e.g. "IL-6" or "IL" if all IL-markers needs to be plotted.
 #' @param xdim Numeric, parameter to pass to FlowSOM, width of the SOM grid,
 #' default is set to 10.
@@ -3072,30 +3079,30 @@ split_big_flowFrames <- function(flow_frame,
 #' transform function, see flowCore::transformList, if different transformation
 #' than arcsine is needed. Only if arcsine_transform is FALSE. If NULL and
 #' arcsine_transform = FALSE no transformation will be applied.Default set to NULL.
-#' @param save_flowsom_result Logical, if FlowSOM and FlowSOM plots should be 
-#' saved. If TRUE (default) files will be saved in out_dir. 
-#' 
+#' @param save_flowsom_result Logical, if FlowSOM and FlowSOM plots should be
+#' saved. If TRUE (default) files will be saved in out_dir.
+#'
 #' @import ggplot2
-#' 
+#'
 #' @examples
-#' #' # Define files before normalization 
+#' #' # Define files before normalization
 #' gate_dir <- file.path(dir, "Gated")
 #' files_before_norm <- list.files(gate_dir,
 #'                                 pattern = ".fcs",
 #'                                 full.names = T)
-#' 
-#' # Define files after normalization 
+#'
+#' # Define files after normalization
 #' norm_dir <- file.path(dir, "CytoNormed")
 #' files_after_norm <- list.files(norm_dir,
 #'                                pattern = ".fcs",
 #'                                full.names = T)
 #'
 #' # files needs to be in the same order, check and order if needed
-#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)), 
+#' test_match_order(x = basename(gsub("Norm_","",files_after_norm)),
 #'                  basename(files_before_norm))
 #'
 #' batch_labels <- stringr::str_match(basename(files_before_norm), "day[0-9]*")[,1]
-#' 
+#'
 #' mx <- extract_pctgs_msi_per_flowsom(files_after_norm = files_after_norm,
 #'                                     files_before_norm = files_before_norm,
 #'                                     nCells = 50000,
@@ -3107,8 +3114,8 @@ split_big_flowFrames <- function(flow_frame,
 #'                                     ydim = 10,
 #'                                     n_metaclusters = 35,
 #'                                     out_dir = norm_dir,
-#'                                     arcsine_transform = TRUE, 
-#'                                     save_matrix = TRUE, 
+#'                                     arcsine_transform = TRUE,
+#'                                     save_matrix = TRUE,
 #'                                     seed = 343)
 #'
 #' @return list of matrices that contain calculation for
@@ -3116,8 +3123,8 @@ split_big_flowFrames <- function(flow_frame,
 #' cl_msi (cluster MSIs for selected markers), mcl_msi (metaclusters MSI
 #' for selected markers). If save_matrix = TRUE, saves this matrices in out_dir.
 #' FlowSOM objects for normalized and unnormalized data,
-#' if save_flowsom_result set to TRUE. 
-#' 
+#' if save_flowsom_result set to TRUE.
+#'
 #' @export
 extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                                           files_after_norm,
@@ -3129,18 +3136,18 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                                           n_metaclusters = 35,
                                           out_dir = NULL,
                                           seed = NULL,
-                                          arcsine_transform = TRUE, 
+                                          arcsine_transform = TRUE,
                                           save_matrix = TRUE,
-                                          transform_list = NULL, 
+                                          transform_list = NULL,
                                           save_flowsom_result = TRUE) {
-  
+
   if (!all(file.exists(c(files_after_norm, files_before_norm)))){
     stop("incorrect file path, the fcs file does not exist")
   }
-  
+
   file_list <- list("before" = files_before_norm,
                     "after" = files_after_norm)
-  
+
     if(is.null(out_dir)){
       out_dir <- file.path(getwd(), "CytoNormed")
     }
@@ -3156,7 +3163,7 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                                   writeOutput = F,
                                   outputFile = file.path(out_dir, paste0(f, "_flowsom_agg.fcs")))
 
-    
+
     if(arcsine_transform){
       ff_aggt <- flowCore::transform(ff_agg,
                                 flowCore::transformList(grep("Di", flowCore::colnames(ff_agg),
@@ -3192,17 +3199,17 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
     if(save_flowsom_result){
       fsomPlot <- FlowSOM::PlotStars(fsom, backgroundValues = fsom$metaclustering)
       fsomTsne <- FlowSOM::PlotDimRed(fsom = fsom, cTotal = 5000, seed = s)
-      
+
       figure <- suppressWarnings(ggpubr::ggarrange(fsomPlot, fsomTsne,
                                                    # labels = c("FlowSOM clustering", "tsne"),
                                                    ncol = 2, nrow = 1))
-      
+
       ggplot2::ggsave(filename = paste0(f, "_FlowSOM.pdf"), plot = figure, device = "pdf", path = out_dir,
                       width =24, height = 10)
-      
+
       saveRDS(object = fsom, file = file.path(out_dir, paste0(f, "_flowsom.RDS")))
     }
-    
+
 
     # Define matrices for frequency (pctgs) calculation and MSI (msi). These calculation is performed
     # for clusters (cl) and metaclusters (mcl)
@@ -3214,11 +3221,11 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
                         ncol = nClus,
                         dimnames = list(basename(file_list[[f]]), 1:nClus))
     mfi_cl_names <- apply(expand.grid(paste0("Cl", seq_len(fsom$map$nNodes)),
-                                      FlowSOM::GetMarkers(ff_agg, 
+                                      FlowSOM::GetMarkers(ff_agg,
                                                           unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     mfi_mc_names <- apply(expand.grid(paste0("MC", 1:nClus),
-                                      FlowSOM::GetMarkers(ff_agg, 
+                                      FlowSOM::GetMarkers(ff_agg,
                                                           unique(c(phenotyping_channels,functional_channels)))),
                           1, paste, collapse = "_")
     cl_msi <- matrix(NA,
@@ -3280,13 +3287,13 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
 
     res[[f]] <- all_mx
   }
-   
+
   if(save_matrix){
     saveRDS(object = res, file = file.path(out_dir, "cell_frequency_and_msi_list_using_FlowSOM.RDS"))
   }
-  
+
   return(res)
- 
+
 }
 
 
@@ -3713,25 +3720,25 @@ extract_pctgs_msi_per_flowsom <- function(files_before_norm,
 
 #' Plot listed plots with one common legend
 #'
-#' @param plot_lists The list of ggplots  
+#' @param plot_lists The list of ggplots
 #' @param nrow Numeric, number of rows to arrange the plots
 #' @param ncol Numeric, number of columns to arrange the plots.
-#' @param position Character, Position of the legend, either "bottom" or "right". 
+#' @param position Character, Position of the legend, either "bottom" or "right".
 #'
 #' @return combained ggplot
 #' @export
-#' 
+#'
 #' @import gridExtra, ggplot2
 #'
 #' @examples
-#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2, 
+#' gg_a <- grid_arrange_common_legend(plot_lists = plots, nrow = 2, ncol = 2,
 #' position = "right")
 
-grid_arrange_common_legend <- function(plot_lists, 
-                                       nrow = 1, 
-                                       ncol = length(plot_lists), 
+grid_arrange_common_legend <- function(plot_lists,
+                                       nrow = 1,
+                                       ncol = length(plot_lists),
                                        position = c("bottom", "right")) {
-  
+
   position <- match.arg(position)
   g <- ggplotGrob(plot_lists[[1]] + theme(legend.position = position))$grobs
   legend <- g[[which(sapply(g, function(x) x$name) == "guide-box")]]
@@ -3739,7 +3746,7 @@ grid_arrange_common_legend <- function(plot_lists,
   lwidth <- sum(legend$width)
   gl <- lapply(plot_lists, function(x) x + theme(legend.position = "none"))
   gl <- c(gl, nrow = nrow, ncol = ncol)
-  
+
   combined <- switch(position,
                      "bottom" = arrangeGrob(do.call(arrangeGrob, gl),
                                             legend,
@@ -3752,91 +3759,91 @@ grid_arrange_common_legend <- function(plot_lists,
   grid::grid.newpage()
   grid::grid.draw(combined)
   return(combined)
-  
+
 }
 
 
 
 #' Plot 2D scatter plots
-#' 
-#' @description Plots biaxial plots 
 #'
-#' @param fcs_files Character, pathway to fcs files. 
-#' @param markers_to_plot Character, pattern of the markers to be plotted e.g. 
+#' @description Plots biaxial plots
+#'
+#' @param fcs_files Character, pathway to fcs files.
+#' @param markers_to_plot Character, pattern of the markers to be plotted e.g.
 #' "CD" (all CD markers will be plotted), "CD41$" (only CD41 will be plotted).
 #' @param y_marker Character, The marker to be plotted on the y-axis.
 #' @param out_dir Character, path where fill are saved, if NULL (default)
 #' files are saved in getwd()
-#' @param out_put_name The name of the file that is saved in out_dir, default is 
+#' @param out_put_name The name of the file that is saved in out_dir, default is
 #' "marker_plots.png".
 #'
 #' @return Save plots in out_dir.
 #' @export
 #'
 #' @examples
-#' plot_2D_scatter_plots(fcs_files = fcs_files, 
-#'                       markers_to_plot = c("CD", "HLA"), 
-#'                       y_marker = "CD45$", 
-#'                       out_dir = getwd(), 
+#' plot_2D_scatter_plots(fcs_files = fcs_files,
+#'                       markers_to_plot = c("CD", "HLA"),
+#'                       y_marker = "CD45$",
+#'                       out_dir = getwd(),
 #'                       out_put_name = "marker_plots.png")
-#' 
-#' 
+#'
+#'
 plot_2D_scatter_plots <- function(fcs_files,
-                                  markers_to_plot, 
-                                  y_marker, 
+                                  markers_to_plot,
+                                  y_marker,
                                   out_dir = NULL,
                                   out_put_name = "marker_plots.png"){
-  
-  
+
+
   if(!all(file.exists(fcs_files))){
     stop("fcs files do not exist")
   }
-  
+
   ff <- flowCore::read.FCS(fcs_files[1], transformation = FALSE)
-  
+
   if (!is.null(markers_to_plot)){
-    
+
     if(!is.character(markers_to_plot)){
       stop ("markers are not a character vector")
     }
-    
+
     matches <- paste(markers_to_plot, collapse="|")
-    
+
     norm_markers <- grep(matches,
                          FlowSOM::GetMarkers(ff, find_mass_ch(ff,
                                                               value = TRUE)),
                          value = TRUE, ignore.case = FALSE)
-    
+
   } else {
     norm_markers <- find_mass_ch(ff, value = TRUE)
     norm_markers <- FlowSOM::GetMarkers(ff, norm_markers)
   }
-  
+
   matches_y <- paste(y_marker, collapse="|")
   ym <- grep(matches_y,
              FlowSOM::GetMarkers(ff, find_mass_ch(ff,
                                                   value = TRUE)),
              value = TRUE, ignore.case = FALSE)
-  
-  n_plots <- length(norm_markers) - 1  
-  png(file.path(out_dir, paste0(out_put_name)), 
+
+  n_plots <- length(norm_markers) - 1
+  png(file.path(out_dir, paste0(out_put_name)),
       width = n_plots * 300, height = length(fcs_files) * 300)
   layout(matrix(1:(length(fcs_files) * n_plots), ncol = n_plots, byrow = TRUE))
-  
+
   for(file in fcs_files){
     ff <- read.FCS(file, transformation = FALSE)
-    
+
     cols_to_trans <- grep(pattern = "Di", x = colnames(ff), value = TRUE)
-    
+
     ff_t <- flowCore::transform(ff, flowCore::transformList(cols_to_trans, cytofTransform))
-    
+
     for(m in names(norm_markers)){
-      
+
       if(m != names(ym)){
         plotDens(obj = ff_t, channels = c(m,names(ym)), main = basename(file))
         print(paste("plotting", basename(file), m))
       }
-    } 
+    }
   }
   dev.off()
 }
