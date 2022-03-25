@@ -1830,6 +1830,8 @@ debarcode_files <- function(fcs_files,
     flowCore::write.FCS(x = flowFrame, filename = file.path(out_dir, outputFile), endian = "big")
   }
 
+  return(file.path(out_dir, outputFile))
+
   # return(flowFrame)
 }
 
@@ -1919,7 +1921,7 @@ aggregate_files <- function(fcs_files,
   if(!dir.exists(out_dir)){dir.create(out_dir)}
 
   # Parallelized analysis
-  BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
+  aggregatedFiles <- BiocParallel::bplapply(seq_len(nrow(md)), function(i) {
     patterns <- as.character(md[i, c(barcode_column, batch_column)])
 
     files_to_agg <- grep(pattern = patterns[2],
@@ -1939,6 +1941,8 @@ aggregate_files <- function(fcs_files,
                    out_dir = out_dir)
   },
     BPPARAM = BiocParallel::MulticoreParam(workers = cores))
+
+  return(unlist(aggregatedFiles))
 
 }
 
