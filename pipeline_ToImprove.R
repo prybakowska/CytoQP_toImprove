@@ -243,69 +243,37 @@ dev.off()
 # ------------------------------------------------------------------------------
 # Normalization using reference sample -----------------------------------------
 #-------------------------------------------------------------------------------
-library(CytoNorm)
+
 # Set input directory
 gate_dir <- file.path(dir, "Gated")
 
 # Define reference samples
 files_ref <- list.files(gate_dir,
-                        pattern = "REF.*_gated.fcs$",
+                        pattern = "*_gated.fcs$",
                         full.names = TRUE,
                         recursive = T)
 
-# Define batch labels for each files
-labels_ref <- stringr::str_match(basename(files_ref),
-                                   ".*_(day[0-9]*).*.fcs")[,2]
-# Define channels to be normalized
-ff <- flowCore::read.FCS(files_ref[1])
-channels <- grep("Pd|Rh|140",
-                 grep("Di", flowCore::colnames(ff),
-                      value = T),
-                 value = T, invert = T)
+df <- data.frame("file_paths" = files_ref,
+                 "batch_labels" = stringr::str_match(files_ref, "day[0-9]*")[,1],
+                 "ref_ids" = grepl("REF", files_ref))
 
-# Define out_dir for normalized files
-norm_dir <- file.path(dir, "CytoNormed")
-if(!dir.exists(norm_dir))(dir.create(norm_dir))
 
-# Build the normalization model using reference samples and plot quantiles
-png(file.path(norm_dir, "005_095_normalization.png"),
-    width = length(channels) * 300,
-    height = (length(files_ref) * 2 + 1) * 300)
-model <- CytoNorm::QuantileNorm.train(files = files_ref,
-                                      labels = labels_ref,
-                                      channels = channels,
-                                      transformList = flowCore::transformList(channels,
-                                                                    CytoNorm::cytofTransform),
-                                      nQ = 2,
-                                      limit = c(0,8),
-                                      quantileValues = c(0.05, 0.95),
-                                      goal = "mean",
-                                      plot = TRUE)
-dev.off()
-
-# save the model
-saveRDS(object = model,
-        file = file.path(norm_dir, "005_095_model.RDS"))
-
-# Define path to the files for normalization
-files <- list.files(file.path(gate_dir),
-                    pattern = "_gated.fcs$",
-                    full.names = TRUE, recursive = T)
-
-# Define batch labels for each files, note that they need to corresponds to
-# reference labels
-labels <- stringr::str_match(basename(files),
-                             ".*_(day[0-9]*).*.fcs")[,2]
+model <- train_REF_model(df = df, 
+                         markers_to_normalize = c("CD", "HLA", "IgD", 
+                                                  "IL", "TN", "MCP", "MIP",
+                                                  "Gran", "IFNa"), 
+                         arcsine_transform = TRUE,
+                         nQ = 2,
+                         limit = c(0,8), 
+                         quantileValues = c(0.05, 0.95), 
+                         goal = "mean",
+                         norm_with_clustering = FALSE, 
+                         save_model = TRUE, 
+                         clustering_markers = c("CD", "HLA", "IgD"))
 
 # Normalize files
-CytoNorm::QuantileNorm.normalize(model = model,
-                                 files = files,
-                                 labels = labels,
-                                 transformList = flowCore::transformList(channels,
-                                                               CytoNorm::cytofTransform),
-                                 transformList.reverse = flowCore::transformList(channels,
-                                                                       CytoNorm::cytofTransform.reverse),
-                                 outputDir = norm_dir)
+normalize_REF(model = model, df = df, arcsine_transform = TRUE, 
+              norm_with_clustering = FALSE)
 
 # ------------------------------------------------------------------------------
 # Plot batch effect ------------------------------------------------------------

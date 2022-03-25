@@ -3853,3 +3853,244 @@ plot_2D_scatter_plots <- function(fcs_files,
 }
 
 
+#' Title
+#' 
+#' @description Perform normalization using reference files. Takes advantage of
+#' CytoNorm package. 
+#'
+#' @param df Data frame containing following columns:
+#' file_paths (the full path to the files to be normalized), 
+#' batch_label (batch label for each file), ref_ids (logical defining TRUE values
+#' for reference sample).
+#' @param markers_to_normalize Character vector, marker names to be normalized, 
+#' can be full marker name e.g. "CD45$" (only CD45 marker will be picked) or 
+#' "CD" (all markers containig "CD" will be used).
+#' If NULL (default) all non-mass markers will be normalized.
+#' @param transformList 
+#' @param arcsine_transform 
+#' @param nQ 
+#' @param limit 
+#' @param quantileValues 
+#' @param goal 
+#' @param to_plot 
+#' @param norm_with_clustering 
+#' @param seed 
+#' @param nCells 
+#' @param xdim 
+#' @param ydim 
+#' @param nClus 
+#' @param clustering_markers 
+#' @param out_dir 
+#' @param save_model 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+train_REF_model <- function(df,
+                            markers_to_normalize = NULL,
+                            transformList = NULL,
+                            arcsine_transform = TRUE,
+                            nQ = 101,
+                            limit = NULL,
+                            quantileValues = NULL,
+                            goal = "mean",
+                            to_plot = TRUE,
+                            norm_with_clustering = FALSE, 
+                            seed = NULL, 
+                            nCells = 10000,
+                            xdim = 10,
+                            ydim = 10,
+                            nClus = 10,
+                            clustering_markers = NULL, 
+                            out_dir = NULL, 
+                            save_model = FALSE){
+  
+  if(!is(df, "data.frame")){
+    stop("df is not a data frame")
+  }
+  
+  if(!all(colnames(df) == c("file_paths", "batch_labels", "ref_ids"))){
+    stop("colnames in df does not match: file_paths, batch_ids, ref_ids 
+        please correct colnames")
+  }
+  
+  if(!all(file.exists(df$file_paths))){
+    id <- !file.exists(df$file_paths)
+    print(df$file_paths[id])
+    stop("above files have incorrect path")
+  }
+ 
+  
+  flow_frame <- flowCore::read.FCS(df$file_paths[1])
+  if (!is.null(markers_to_normalize)){
+    
+    matches <- paste(markers_to_normalize, collapse="|")
+    
+    m_to_keep <- names(grep(matches, FlowSOM::GetMarkers(flow_frame, flowCore::colnames(flow_frame)),
+                            ignore.case = TRUE, value = TRUE))
+    m_to_keep <- grep(pattern = "File", x = m_to_keep, ignore.case = TRUE,
+                      invert = TRUE, value = TRUE)
+    
+  } else {
+    m_to_keep <- grep(pattern = "Time|length|Center|Offset|Width|Residual|File|File_scattered",
+                      x = flowCore::colnames(flow_frame),
+                      ignore.case = TRUE, value = TRUE, invert = TRUE)
+  }
+  
+  # create out_dir if does not exist
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "CytoNormed")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
+  files_ref <- df$file_paths[df$ref_ids]
+  message(paste("The following reference files were found"))
+  print(basename(files_ref))
+  
+  labels_ref <- df$batch_labels[df$ref_ids]
+  
+  if(arcsine_transform & !is.null(transformList)){
+    stop("define either arcsine_transform or transformList parameter")
+  } else if(arcsine_transform==FALSE & is.null(transformList)){
+    stop("define either arcsine_transform or transformList parameter")
+  }
+  
+  if(arcsine_transform){
+    trans <- flowCore::transformList(m_to_keep,
+                                            CytoNorm::cytofTransform)
+   
+  } else {
+    trans <- transformList
+  }
+  
+  if(to_plot & !norm_with_clustering){
+    
+    png(file.path(out_dir, "REF_normalization_taining_model.png"),
+        width = length(m_to_keep) * 300,
+        height = (length(files_ref) * 2 + 1) * 300)
+  }
+  
+  
+  if(norm_with_clustering){
+    print("Clustering the data using FlowSOM")
+    
+    if(!is.null(clustering_markers)){
+      markers_all <- FlowSOM::GetMarkers(flow_frame, flowCore::colnames(flow_frame))
+      clustering_pattern <- paste(clustering_markers, collapse = "|")
+      clustering_pattern <- names(grep(clustering_pattern, markers_all, value = TRUE))
+    } else {
+      clustering_pattern <- m_to_keep
+    }
+
+    
+    nC <- length(files_ref)*nCells
+    model <- CytoNorm::CytoNorm.train(files = files_ref, 
+                                      labels = labels_ref,
+                                      channels = m_to_keep, 
+                                      transformList = trans, 
+                                      plot = to_plot, 
+                                      seed = seed, 
+                                      normParams = list(nQ = nQ,
+                                                        limit = limit,
+                                                        quantileValues = quantileValues,
+                                                        goal = goal),
+                                      FlowSOM.params = list(nCells = nC,
+                                                            xdim = xdim,
+                                                            ydim = ydim,
+                                                            nClus = nClus,
+                                                            scale = FALSE,
+                                                            colsToUse = clustering_pattern), 
+                                      outputDir = out_dir)
+    
+  } else {
+    model <- CytoNorm::QuantileNorm.train(files = files_ref,
+                                          labels = labels_ref,
+                                          channels = m_to_keep,
+                                          transformList = trans,
+                                          nQ = 2,
+                                          limit = c(0,8),
+                                          quantileValues = c(0.05, 0.95),
+                                          goal = "mean",
+                                          plot = to_plot)
+  }
+  
+  
+  
+  if(to_plot & !norm_with_clustering){
+    dev.off()
+  }
+  print(out_dir)
+  if (save_model){
+    saveRDS(model, file.path(out_dir, "REF_normalization_model.RSD"))
+  }
+  return(model)
+}
+
+
+normalize_REF <- function(model, 
+                          df,
+                          arcsine_transform = TRUE,
+                          transformList = NULL,
+                          transformList.reverse = NULL,
+                          out_dir = NULL, 
+                          norm_with_clustering = FALSE){
+  
+  files <- df$file_paths
+  
+  if(!all(file.exists(files))){
+    stop("the files does not exist, please specify the corect pathway")
+  }
+  
+  labels <- df$batch_labels
+  
+  if(arcsine_transform & !is.null(transformList)){
+    stop("define either arcsine_transform or transformList parameter")
+  } else if(arcsine_transform==FALSE & is.null(transformList)){
+    stop("define either arcsine_transform or transformList parameter")
+  }
+  
+  if(arcsine_transform){
+    flow_frame <- flowCore::read.FCS(df$file_paths[1])
+    
+    
+    trans <- flowCore::transformList(flowCore::colnames(flow_frame),
+                                     CytoNorm::cytofTransform)
+    trans_rev <- flowCore::transformList(flowCore::colnames(flow_frame),
+                                         CytoNorm::cytofTransform.reverse)
+    
+  } else {
+    if(is.null(transformList)){
+      stop("define transformList")
+    }
+    
+    trans <- transformList
+    
+    if(is.null(transformList.reverse)){
+      stop("define transformList")
+    }
+    trans_rev <- transformList.reverse
+  }
+  
+  if(is.null(out_dir)){
+    out_dir <- file.path(getwd(), "CytoNormed")
+  }
+  if(!dir.exists(out_dir)){dir.create(out_dir)}
+  
+  if(norm_with_clustering){
+    CytoNorm::CytoNorm.normalize(model = model,
+                                 files = files, 
+                                 labels = labels, 
+                                 transformList = trans, 
+                                 transformList.reverse = trans_rev, 
+                                 outputDir = out_dir)
+    
+  } else {
+    CytoNorm::QuantileNorm.normalize(model = model,
+                                     files = files,
+                                     labels = labels,
+                                     transformList = trans,
+                                     transformList.reverse = trans_rev,
+                                     outputDir = out_dir)
+  }
+}
