@@ -672,7 +672,7 @@ baseline_file <- function(fcs_files, beads = "dvs", to_plot = FALSE,
                                  markers_to_keep = markers_to_keep)
 
   # save normalized FCS files
-  flowCore::write.FCS(ff_norm, filename = file.path(bead_norm_dir,
+  flowCore::write.FCS(ff_norm, filename = file.path(out_dir,
                                                     gsub(".FCS","_beadNorm.fcs",
                                                          basename(file),
                                                          ignore.case = TRUE)))
